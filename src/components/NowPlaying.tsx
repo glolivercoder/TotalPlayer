@@ -55,9 +55,12 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
   return (
     <div 
       className={cn(
-        'glass fixed bottom-24 left-4 right-4 rounded-2xl p-4 z-10 transition-all duration-500 ease-out-expo',
+        'glass fixed bottom-24 left-4 right-4 rounded-2xl p-4 z-10 transition-all duration-500',
         expanded ? 'h-[70vh] bottom-24' : 'h-24'
       )}
+      style={{ 
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' // ease-out-expo
+      }}
       onClick={expanded ? undefined : onToggleExpand}
     >
       <div className="h-full flex flex-col">

@@ -123,7 +123,8 @@
   }
   
   .hover-lift {
-    @apply transition-all duration-300 ease-out-expo hover:-translate-y-1 hover:shadow-lg active:translate-y-0;
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg active:translate-y-0;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); /* ease-out-expo */
   }
   
   .visualizer-bar {

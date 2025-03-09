@@ -34,7 +34,7 @@ const MusicVisualizer = ({ isPlaying = false }) => {
             opacity: isPlaying ? 1 : 0.5,
             transitionProperty: 'height, opacity',
             transitionDuration: '0.3s',
-            transitionTimingFunction: 'ease-out-expo'
+            transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' // This is the ease-out-expo function
           }}
         />
       ))}
