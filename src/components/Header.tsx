@@ -32,11 +32,6 @@ const Header = ({
     }
   };
   
-  const handleOpenDirectory = () => {
-    // This will be implemented with a file system API
-    console.log('Opening directory selector');
-  };
-  
   const getTitle = () => {
     if (title) return title;
     
@@ -91,14 +86,6 @@ const Header = ({
       </form>
       
       <div className="flex items-center gap-2">
-        <button 
-          className="p-2 rounded-full hover:bg-secondary transition-colors"
-          aria-label="Open Directory"
-          onClick={handleOpenDirectory}
-        >
-          <FolderOpen size={20} />
-        </button>
-        
         <button 
           className="p-2 rounded-full hover:bg-secondary transition-colors"
           aria-label="Notifications"

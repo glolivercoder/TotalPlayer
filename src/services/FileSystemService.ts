@@ -1,105 +1,100 @@
 
 interface MusicFile {
   name: string;
-  type: string;
-  path: string;
   handle: FileSystemFileHandle;
+  type: string;
+  size?: number;
 }
 
 class FileSystemService {
   private directoryHandle: FileSystemDirectoryHandle | null = null;
-
-  /**
-   * Request permission to access the file system
-   */
-  async requestPermission(): Promise<boolean> {
+  
+  async requestDirectoryAccess(): Promise<boolean> {
     try {
-      // @ts-ignore - The File System Access API TypeScript definitions might not be up to date
-      const directoryHandle = await window.showDirectoryPicker({
-        mode: 'read'
+      const dirHandle = await window.showDirectoryPicker({
+        id: 'music-library',
+        mode: 'read',
+        startIn: 'music',
       });
       
-      this.directoryHandle = directoryHandle;
+      this.directoryHandle = dirHandle;
       return true;
     } catch (error) {
-      console.error('Error requesting file system permission:', error);
+      console.error('Error getting directory access:', error);
       return false;
     }
   }
 
-  /**
-   * Check if we have permission to access the previously selected directory
-   */
-  async hasPermission(): Promise<boolean> {
-    if (!this.directoryHandle) return false;
-    
-    try {
-      // Try to read permission state
-      // @ts-ignore - QueryPermissionResult might not be defined in the TS types
-      const permissionState = await this.directoryHandle.queryPermission({ mode: 'read' });
-      return permissionState === 'granted';
-    } catch (error) {
-      console.error('Error checking permission:', error);
-      return false;
-    }
+  async hasStoredDirectoryAccess(): Promise<boolean> {
+    // Check if we have a stored directory handle in localStorage
+    const savedDir = localStorage.getItem('musicDirectoryHandle');
+    return !!savedDir;
   }
 
-  /**
-   * Scan the selected directory for music files
-   */
-  async scanMusicFiles(): Promise<MusicFile[]> {
-    if (!this.directoryHandle) {
-      throw new Error('No directory selected. Call requestPermission() first.');
-    }
-
-    const musicFiles: MusicFile[] = [];
-    
+  async getFileFromHandle(fileHandle: FileSystemFileHandle): Promise<File> {
     try {
-      // We need to use the entries() method and manual iteration
-      // because TypeScript doesn't recognize the async iterator
-      const entries = this.directoryHandle.entries();
-      let entry;
-      
-      // Manual async iteration
-      while ((entry = await entries.next()) && !entry.done) {
-        const [name, handle] = entry.value;
-        
-        if (handle.kind === 'file') {
-          const fileHandle = handle as FileSystemFileHandle;
-          const fileName = name.toLowerCase();
-          
-          // Check if it's a music file by extension
-          if (fileName.endsWith('.mp3') || 
-              fileName.endsWith('.wav') || 
-              fileName.endsWith('.ogg') || 
-              fileName.endsWith('.m4a') || 
-              fileName.endsWith('.flac')) {
-            
-            musicFiles.push({
-              name: name,
-              type: fileName.split('.').pop() || '',
-              path: name, // We don't have a real path in the web API
-              handle: fileHandle
-            });
-          }
-        } else if (handle.kind === 'directory') {
-          // In a more complex implementation, we could recursively scan subdirectories
-          // but for simplicity, we're just scanning the top level
-        }
-      }
-      
-      return musicFiles;
+      return await fileHandle.getFile();
     } catch (error) {
-      console.error('Error scanning directory:', error);
+      console.error('Error getting file from handle:', error);
       throw error;
     }
   }
 
-  /**
-   * Get the file from a handle
-   */
-  async getFileFromHandle(handle: FileSystemFileHandle): Promise<File> {
-    return await handle.getFile();
+  async scanForMusicFiles(): Promise<MusicFile[]> {
+    if (!this.directoryHandle) {
+      throw new Error('No directory handle available. Request access first.');
+    }
+    
+    const musicFiles: MusicFile[] = [];
+    
+    try {
+      // Modern approach to iterate directories - compatible with Chrome
+      const getFilesRecursively = async (dirHandle: FileSystemDirectoryHandle, path = '') => {
+        // Manual async iteration using async iterator
+        for await (const [name, handle] of Object.entries(dirHandle)) {
+          // Create full path for nested files
+          const itemPath = path ? `${path}/${name}` : name;
+          
+          if (handle.kind === 'file') {
+            // It's a file
+            const fileHandle = handle as FileSystemFileHandle;
+            const fileName = name.toLowerCase();
+            
+            // Check if it's a music file by extension
+            if (fileName.endsWith('.mp3') || fileName.endsWith('.wav') || 
+                fileName.endsWith('.ogg') || fileName.endsWith('.flac') || 
+                fileName.endsWith('.m4a') || fileName.endsWith('.aac')) {
+              
+              // Push music file to our array
+              musicFiles.push({
+                name: name,
+                handle: fileHandle,
+                type: this.getFileType(fileName),
+              });
+            }
+          } else if (handle.kind === 'directory') {
+            // Recursively scan subdirectories
+            await getFilesRecursively(handle as FileSystemDirectoryHandle, itemPath);
+          }
+        }
+      };
+      
+      await getFilesRecursively(this.directoryHandle);
+      return musicFiles;
+    } catch (error) {
+      console.error('Error scanning for music files:', error);
+      throw error;
+    }
+  }
+  
+  private getFileType(fileName: string): string {
+    if (fileName.endsWith('.mp3')) return 'audio/mpeg';
+    if (fileName.endsWith('.wav')) return 'audio/wav';
+    if (fileName.endsWith('.ogg')) return 'audio/ogg';
+    if (fileName.endsWith('.flac')) return 'audio/flac';
+    if (fileName.endsWith('.m4a')) return 'audio/m4a';
+    if (fileName.endsWith('.aac')) return 'audio/aac';
+    return 'audio/unknown';
   }
 }
 
