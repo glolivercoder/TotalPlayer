@@ -93,7 +93,8 @@ const EqualizerPage = () => {
                     className="h-full w-2 appearance-none bg-secondary rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
                     style={{ 
                       WebkitAppearance: 'slider-vertical',
-                      writingMode: 'bt-lr' 
+                      // Fix: Using a valid value for writing-mode in React
+                      writingMode: 'vertical-lr'
                     }}
                   />
                   <span className="text-xs text-muted-foreground">{value}%</span>
