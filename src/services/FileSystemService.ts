@@ -54,9 +54,8 @@ class FileSystemService {
 
     const musicFiles: MusicFile[] = [];
     
-    // Use async iteration instead of .values()
     try {
-      // The correct way to iterate through directory entries
+      // Use for-await-of loop to iterate through directory entries
       for await (const [name, handle] of this.directoryHandle) {
         if (handle.kind === 'file') {
           const fileHandle = handle as FileSystemFileHandle;
