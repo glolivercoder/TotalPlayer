@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, LibraryBig, Download } from 'lucide-react';
+import { Home, LibraryBig, Download, Mic2, Sliders } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NavigationBar = () => {
@@ -9,9 +9,9 @@ const NavigationBar = () => {
   
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
-    { icon: Search, label: 'Search', path: '/search' },
     { icon: LibraryBig, label: 'Library', path: '/library' },
-    { icon: Download, label: 'Downloads', path: '/downloads' }
+    { icon: Mic2, label: 'Karaoke', path: '/karaoke' },
+    { icon: Sliders, label: 'Equalizer', path: '/equalizer' }
   ];
   
   const isActive = (path: string) => {

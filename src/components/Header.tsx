@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { ChevronLeft, UserCircle, Bell } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, UserCircle, Bell, Search, FolderOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -19,9 +19,22 @@ const Header = ({
 }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState('');
   
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+  
+  const handleOpenDirectory = () => {
+    // This will be implemented with a file system API
+    console.log('Opening directory selector');
   };
   
   const getTitle = () => {
@@ -32,7 +45,9 @@ const Header = ({
       '/': 'Home',
       '/search': 'Search',
       '/library': 'Your Library',
-      '/downloads': 'Downloads'
+      '/downloads': 'Downloads',
+      '/karaoke': 'Karaoke',
+      '/equalizer': 'Equalizer'
     };
     
     return pathMapping[location.pathname] || '';
@@ -46,7 +61,7 @@ const Header = ({
         className
       )}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         {showBackButton && (
           <button 
             onClick={handleBack}
@@ -60,7 +75,30 @@ const Header = ({
         <h1 className="text-xl font-semibold">{getTitle()}</h1>
       </div>
       
+      <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={16} className="text-muted-foreground" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search music, artists, albums..."
+            className="w-full py-2 pl-10 pr-4 rounded-full bg-secondary border-transparent focus:border-primary focus:bg-background focus:ring-0 text-sm transition-colors"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </form>
+      
       <div className="flex items-center gap-2">
+        <button 
+          className="p-2 rounded-full hover:bg-secondary transition-colors"
+          aria-label="Open Directory"
+          onClick={handleOpenDirectory}
+        >
+          <FolderOpen size={20} />
+        </button>
+        
         <button 
           className="p-2 rounded-full hover:bg-secondary transition-colors"
           aria-label="Notifications"

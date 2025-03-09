@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
+import KaraokePage from "./pages/KaraokePage";
+import EqualizerPage from "./pages/EqualizerPage";
 import NavigationBar from "./components/NavigationBar";
 import NowPlaying from "./components/NowPlaying";
 
@@ -30,6 +32,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
+              <Route path="/karaoke" element={<KaraokePage />} />
+              <Route path="/equalizer" element={<EqualizerPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
