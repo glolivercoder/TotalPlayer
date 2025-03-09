@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import { cn } from '@/lib/utils';
@@ -92,7 +93,7 @@ const EqualizerPage = () => {
                     className="h-full w-2 appearance-none bg-secondary rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
                     style={{ 
                       WebkitAppearance: 'slider-vertical',
-                      writing-mode: 'bt-lr' 
+                      writingMode: 'bt-lr' 
                     }}
                   />
                   <span className="text-xs text-muted-foreground">{value}%</span>
