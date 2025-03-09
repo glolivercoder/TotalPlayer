@@ -55,8 +55,15 @@ class FileSystemService {
     const musicFiles: MusicFile[] = [];
     
     try {
-      // Use for-await-of loop to iterate through directory entries
-      for await (const [name, handle] of this.directoryHandle) {
+      // We need to use the entries() method and manual iteration
+      // because TypeScript doesn't recognize the async iterator
+      const entries = this.directoryHandle.entries();
+      let entry;
+      
+      // Manual async iteration
+      while ((entry = await entries.next()) && !entry.done) {
+        const [name, handle] = entry.value;
+        
         if (handle.kind === 'file') {
           const fileHandle = handle as FileSystemFileHandle;
           const fileName = name.toLowerCase();
