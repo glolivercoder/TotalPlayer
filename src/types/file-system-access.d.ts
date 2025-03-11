@@ -22,8 +22,12 @@ interface FileSystemDirectoryPickerOptions {
   startIn?: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
 }
 
-interface Window {
-  showDirectoryPicker(options?: FileSystemDirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
-  showOpenFilePicker(options?: any): Promise<FileSystemFileHandle[]>;
-  showSaveFilePicker(options?: any): Promise<FileSystemFileHandle>;
+declare global {
+  interface Window {
+    showDirectoryPicker(options?: FileSystemDirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
+    showOpenFilePicker(options?: any): Promise<FileSystemFileHandle[]>;
+    showSaveFilePicker(options?: any): Promise<FileSystemFileHandle>;
+  }
 }
+
+export {};
