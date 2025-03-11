@@ -51,7 +51,7 @@ class FileSystemService {
       // Modern approach to iterate directories - compatible with Chrome
       const getFilesRecursively = async (dirHandle: FileSystemDirectoryHandle, path = '') => {
         // Manual async iteration using async iterator
-        for await (const [name, handle] of Object.entries(dirHandle)) {
+        for await (const [name, handle] of dirHandle.entries()) {
           // Create full path for nested files
           const itemPath = path ? `${path}/${name}` : name;
           

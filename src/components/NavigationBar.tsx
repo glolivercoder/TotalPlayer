@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, LibraryBig, Download, Mic2, Sliders, FolderOpen } from 'lucide-react';
@@ -7,23 +6,25 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
+interface MusicFolder {
+  name: string;
+  handle: FileSystemDirectoryHandle | null;
+}
+
 const NavigationBar = () => {
   const location = useLocation();
   const { toast } = useToast();
-  const [musicFolders, setMusicFolders] = useState<{ name: string, handle: FileSystemDirectoryHandle }[]>([]);
+  const [musicFolders, setMusicFolders] = useState<MusicFolder[]>([]);
   
-  // Load saved folder handles from IndexedDB on component mount
   useEffect(() => {
     const loadSavedFolders = async () => {
       try {
         const savedFolders = localStorage.getItem('musicFolders');
         if (savedFolders) {
-          // We can only store the names in localStorage
-          // The actual handles need to be re-requested
           const parsedFolders = JSON.parse(savedFolders);
           setMusicFolders(parsedFolders.map((folder: string) => ({ 
             name: folder,
-            handle: null // We'll need to request access again
+            handle: null 
           })));
         }
       } catch (error) {
@@ -49,21 +50,22 @@ const NavigationBar = () => {
 
   const selectMusicFolder = async () => {
     try {
-      // Show the folder picker
       const dirHandle = await window.showDirectoryPicker({
         id: 'music-folders',
         mode: 'readwrite',
         startIn: 'music',
       });
       
-      // Check if this folder is already in our list
       const folderExists = musicFolders.some(folder => folder.name === dirHandle.name);
       
       if (!folderExists) {
-        const newFolders = [...musicFolders, { name: dirHandle.name, handle: dirHandle }];
+        const newFolders: MusicFolder[] = [...musicFolders, { 
+          name: dirHandle.name, 
+          handle: dirHandle 
+        }];
+        
         setMusicFolders(newFolders);
         
-        // Save folder names to localStorage
         localStorage.setItem('musicFolders', JSON.stringify(newFolders.map(f => f.name)));
         
         toast({
@@ -77,21 +79,18 @@ const NavigationBar = () => {
         });
       }
     } catch (error) {
-      // User canceled or error occurred
       console.error('Error selecting folder:', error);
     }
   };
 
   const openMusicFolder = async (folderName: string) => {
     try {
-      // Re-request permission for the folder
       const dirHandle = await window.showDirectoryPicker({
         id: 'music-folders',
         mode: 'readwrite',
         startIn: 'music',
       });
       
-      // Check if this is the folder we're looking for
       if (dirHandle.name === folderName) {
         toast({
           title: "Folder opened",
@@ -142,7 +141,6 @@ const NavigationBar = () => {
           </li>
         ))}
         
-        {/* Folder picker button with popover */}
         <li>
           <Popover>
             <PopoverTrigger asChild>

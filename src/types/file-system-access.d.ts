@@ -2,6 +2,7 @@
 interface FileSystemHandle {
   kind: 'file' | 'directory';
   name: string;
+  isSameEntry(other: FileSystemHandle): Promise<boolean>;
 }
 
 interface FileSystemFileHandle extends FileSystemHandle {
@@ -14,6 +15,8 @@ interface FileSystemDirectoryHandle extends FileSystemHandle {
   entries(): AsyncIterable<[string, FileSystemHandle]>;
   getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
   getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
+  removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
+  resolve(possibleDescendant: FileSystemHandle): Promise<string[] | null>;
 }
 
 interface FileSystemDirectoryPickerOptions {
