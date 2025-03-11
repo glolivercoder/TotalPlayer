@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, LibraryBig, Download, Mic2, Sliders, FolderOpen } from 'lucide-react';
@@ -59,11 +60,12 @@ const NavigationBar = () => {
       const folderExists = musicFolders.some(folder => folder.name === dirHandle.name);
       
       if (!folderExists) {
-        const newFolders: MusicFolder[] = [...musicFolders, { 
-          name: dirHandle.name, 
-          handle: dirHandle 
-        }];
+        const newFolder: MusicFolder = {
+          name: dirHandle.name,
+          handle: dirHandle
+        };
         
+        const newFolders = [...musicFolders, newFolder];
         setMusicFolders(newFolders);
         
         localStorage.setItem('musicFolders', JSON.stringify(newFolders.map(f => f.name)));
