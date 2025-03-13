@@ -15,13 +15,13 @@ const HomePage = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
       <Header />
       
-      <div className="flex-1 px-2 pb-24 overflow-y-auto">
+      <div className="px-2 overflow-y-auto">
         {/* Recently played */}
-        <section className="my-3 animate-slide-up animation-delay-100">
-          <div className="flex justify-between items-center mb-2">
+        <section className="my-2 animate-slide-up animation-delay-100">
+          <div className="flex justify-between items-center mb-1">
             <h2 className="text-lg font-semibold">Recently Played</h2>
             <Link 
               to="/recently-played" 
@@ -53,21 +53,21 @@ const HomePage = () => {
         </section>
         
         {/* Made for you */}
-        <section className="my-4 animate-slide-up animation-delay-200">
-          <h2 className="text-lg font-semibold mb-2">Made For You</h2>
-          <div className="rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/20 p-3">
-            <div className="flex items-center gap-3">
+        <section className="my-3 animate-slide-up animation-delay-200">
+          <h2 className="text-lg font-semibold mb-1">Made For You</h2>
+          <div className="rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/20 p-2">
+            <div className="flex items-center gap-2">
               <img 
                 src="https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&auto=format&fit=crop" 
                 alt="Weekly Mix"
-                className="rounded-lg w-20 h-20 object-cover shadow-md"
+                className="rounded-lg w-16 h-16 object-cover shadow-md"
               />
               
               <div className="flex-1">
-                <h3 className="text-base font-bold mb-1">Your Weekly Mix</h3>
-                <p className="text-muted-foreground text-xs mb-2">Personalized tracks based on your history</p>
+                <h3 className="text-base font-bold mb-0">Your Weekly Mix</h3>
+                <p className="text-muted-foreground text-xs mb-1">Personalized tracks based on your history</p>
                 
-                <button className="bg-primary text-primary-foreground font-medium px-4 py-1 text-xs rounded-full hover:bg-primary/90 transition-colors">
+                <button className="bg-primary text-primary-foreground font-medium px-3 py-1 text-xs rounded-full hover:bg-primary/90 transition-colors">
                   Play Now
                 </button>
               </div>
@@ -76,10 +76,10 @@ const HomePage = () => {
         </section>
         
         {/* Recently added */}
-        <section className="my-4 animate-slide-up animation-delay-300">
-          <h2 className="text-lg font-semibold mb-2">Recently Added</h2>
+        <section className="my-3 animate-slide-up animation-delay-300">
+          <h2 className="text-lg font-semibold mb-1">Recently Added</h2>
           <div className="space-y-1">
-            {tracks.slice(0, 5).map((track) => (
+            {tracks.slice(0, 3).map((track) => (
               <TrackItem 
                 key={track.id}
                 track={track}

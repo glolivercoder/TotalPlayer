@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react';
 import AlbumArt from './AlbumArt';
 import MusicVisualizer from './MusicVisualizer';
 import { cn } from '@/lib/utils';
@@ -100,185 +100,202 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
       }
     }
   }, [isPlaying, currentTrack]);
-
+  
+  // Update video time when audio time changes
+  useEffect(() => {
+    if (currentTrack?.isVideo && videoRef.current) {
+      if (Math.abs(videoRef.current.currentTime - progress) > 0.5) {
+        videoRef.current.currentTime = progress;
+      }
+    }
+  }, [progress, currentTrack]);
+  
   return (
-    <div 
-      className={cn(
-        'glass fixed bottom-0 left-0 right-0 rounded-t-2xl p-4 z-20 transition-all duration-500 border-t border-border/50',
-        expanded ? 'h-[80vh]' : 'h-24'
-      )}
-      style={{ 
-        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' // ease-out-expo
-      }}
-      onClick={expanded ? undefined : onToggleExpand}
-    >
-      <div className="h-full flex flex-col relative overflow-hidden">
-        {/* Compact player (always visible) */}
+    <div className={cn(
+      "glass w-full transition-all duration-300",
+      expanded ? "h-[calc(100vh-48px)]" : "h-auto"
+    )}>
+      {/* Player minimizado */}
+      <div className="p-2">
+        {/* Barra de progresso */}
+        <div 
+          className="progress-slider mb-1 cursor-pointer" 
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const percentage = ((e.clientX - rect.left) / rect.width) * 100;
+            handleSeek(percentage);
+          }}
+        >
+          <div 
+            className="progress-slider-fill" 
+            style={{ width: `${getProgressPercentage()}%` }}
+          />
+        </div>
+        
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4 flex-1 min-w-0">
+          {/* Informações da música */}
+          <div 
+            className="flex items-center flex-1 min-w-0 cursor-pointer" 
+            onClick={onToggleExpand}
+          >
             {currentTrack ? (
               <>
                 <AlbumArt 
-                  src={currentTrack.albumArt || '/default-album-art.png'} 
-                  alt={`${currentTrack.album || 'Unknown Album'} by ${currentTrack.artist}`}
-                  size="sm"
+                  src={currentTrack.albumArt} 
+                  alt={currentTrack.title} 
+                  size="xs"
                   isPlaying={isPlaying}
+                  className="mr-2"
                 />
-                <div className="truncate min-w-0">
-                  <h3 className="font-medium truncate">{currentTrack.title}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{currentTrack.artist}</p>
+                <div className="truncate">
+                  <h3 className="font-medium text-xs truncate">{currentTrack.title}</h3>
+                  <p className="text-[10px] text-muted-foreground truncate">{currentTrack.artist}</p>
                 </div>
               </>
             ) : (
-              <>
-                <div className="w-12 h-12 rounded-md bg-secondary/40 flex-shrink-0"></div>
-                <div className="truncate min-w-0">
-                  <h3 className="font-medium truncate">Nenhuma faixa reproduzindo</h3>
-                  <p className="text-sm text-muted-foreground truncate">Selecione uma faixa para reproduzir</p>
-                </div>
-              </>
+              <div className="text-xs text-muted-foreground">Nenhuma música selecionada</div>
             )}
           </div>
           
-          <div className="flex items-center space-x-2">
+          {/* Controles de reprodução */}
+          <div className="flex items-center space-x-1">
             <button 
               className="player-button" 
-              aria-label="Faixa anterior"
-              onClick={(e) => {
-                e.stopPropagation();
-                previous();
-              }}
+              onClick={previous}
               disabled={!currentTrack}
+              aria-label="Anterior"
             >
-              <SkipBack size={20} />
+              <SkipBack size={16} />
             </button>
             
             <button 
-              className="player-button-primary" 
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle();
-              }}
+              className="player-button primary" 
+              onClick={toggle}
+              disabled={!currentTrack}
               aria-label={isPlaying ? "Pausar" : "Reproduzir"}
-              disabled={!currentTrack}
             >
-              {isPlaying ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
+              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
             </button>
             
             <button 
               className="player-button" 
-              aria-label="Próxima faixa"
-              onClick={(e) => {
-                e.stopPropagation();
-                next();
-              }}
+              onClick={next}
               disabled={!currentTrack}
+              aria-label="Próxima"
             >
-              <SkipForward size={20} />
+              <SkipForward size={16} />
+            </button>
+            
+            <button 
+              className="player-button ml-1" 
+              onClick={onToggleExpand}
+              aria-label={expanded ? "Minimizar player" : "Expandir player"}
+            >
+              {expanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
             </button>
           </div>
         </div>
-        
-        {/* Expanded player (visible when expanded) */}
-        {expanded && (
-          <div className="flex-1 mt-4 overflow-hidden">
-            <div className="expanded-player-content">
-              {/* Left side - Album art and track info */}
-              <div className="flex flex-col items-center justify-center p-4">
-                {currentTrack ? (
-                  <>
-                    <div className="w-full max-w-xs aspect-square mb-4">
-                      <AlbumArt 
-                        src={currentTrack.albumArt || '/default-album-art.png'} 
-                        alt={`${currentTrack.album || 'Unknown Album'} by ${currentTrack.artist}`}
-                        size="lg"
-                        isPlaying={isPlaying}
-                        className="w-full h-full object-cover rounded-xl shadow-lg"
-                      />
-                    </div>
-                    <div className="w-full text-center">
-                      <h2 className="text-xl font-bold truncate">{currentTrack.title}</h2>
-                      <p className="text-muted-foreground truncate">{currentTrack.artist}</p>
-                      {currentTrack.album && (
-                        <p className="text-sm text-muted-foreground truncate">{currentTrack.album}</p>
-                      )}
-                    </div>
-                  </>
+      </div>
+      
+      {/* Player expandido */}
+      {expanded && (
+        <div className="p-4 pt-0 h-[calc(100%-56px)] overflow-auto">
+          <div className="flex flex-col h-full">
+            {/* Área principal */}
+            <div className="flex-1 flex flex-col md:flex-row gap-4 items-center justify-center py-4">
+              {/* Capa do álbum ou vídeo */}
+              <div className="w-full max-w-xs aspect-square relative">
+                {currentTrack?.isVideo ? (
+                  <video 
+                    ref={videoRef}
+                    src={currentTrack.path} 
+                    className="w-full h-full object-contain rounded-lg"
+                    playsInline
+                    muted
+                  />
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="w-64 h-64 rounded-xl bg-secondary/40 mb-4"></div>
-                    <h2 className="text-xl font-bold">Nenhuma faixa selecionada</h2>
-                    <p className="text-muted-foreground">Selecione uma faixa para reproduzir</p>
+                  <AlbumArt 
+                    src={currentTrack?.albumArt || '/default-album-art.png'} 
+                    alt={currentTrack?.title || 'Album art'} 
+                    size="lg"
+                    isPlaying={isPlaying}
+                    className="w-full h-full"
+                  />
+                )}
+                
+                {isPlaying && !currentTrack?.isVideo && (
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+                    <MusicVisualizer isPlaying={isPlaying} />
                   </div>
                 )}
               </div>
               
-              {/* Right side - Controls and visualizer */}
-              <div className="flex flex-col p-4">
-                {/* Visualizer */}
-                <div className="h-32 mb-4 flex items-center justify-center">
-                  <MusicVisualizer isPlaying={isPlaying} />
+              {/* Informações e controles */}
+              <div className="w-full max-w-md flex flex-col items-center md:items-start space-y-6">
+                {/* Título e artista */}
+                <div className="text-center md:text-left w-full">
+                  <h2 className="text-2xl font-bold truncate">{currentTrack?.title || 'Nenhuma música selecionada'}</h2>
+                  <p className="text-lg text-muted-foreground">{currentTrack?.artist || 'Selecione uma música para reproduzir'}</p>
                 </div>
                 
-                {/* Progress bar */}
-                <div className="mb-4">
+                {/* Barra de progresso */}
+                <div className="w-full space-y-2">
                   <div 
-                    className="progress-slider mb-1"
+                    className="progress-slider h-2 cursor-pointer" 
                     onClick={(e) => {
-                      const container = e.currentTarget;
-                      const rect = container.getBoundingClientRect();
-                      const x = e.clientX - rect.left;
-                      const percentage = (x / rect.width) * 100;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const percentage = ((e.clientX - rect.left) / rect.width) * 100;
                       handleSeek(percentage);
                     }}
                   >
                     <div 
                       className="progress-slider-fill" 
                       style={{ width: `${getProgressPercentage()}%` }}
-                    ></div>
+                    />
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
+                  
+                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{getCurrentTime()}</span>
                     <span>{getDuration()}</span>
                   </div>
                 </div>
                 
-                {/* Controls */}
-                <div className="flex items-center justify-center space-x-4 mb-6">
+                {/* Controles de reprodução */}
+                <div className="flex items-center justify-center space-x-4">
                   <button 
                     className="player-button" 
-                    aria-label="Faixa anterior"
                     onClick={previous}
                     disabled={!currentTrack}
+                    aria-label="Anterior"
                   >
                     <SkipBack size={24} />
                   </button>
                   
                   <button 
                     className="player-button primary w-12 h-12" 
-                    aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
                     onClick={toggle}
                     disabled={!currentTrack}
+                    aria-label={isPlaying ? "Pausar" : "Reproduzir"}
                   >
                     {isPlaying ? <Pause size={24} /> : <Play size={24} />}
                   </button>
                   
                   <button 
                     className="player-button" 
-                    aria-label="Próxima faixa"
                     onClick={next}
                     disabled={!currentTrack}
+                    aria-label="Próxima"
                   >
                     <SkipForward size={24} />
                   </button>
                 </div>
                 
-                {/* Volume control */}
-                <div className="flex items-center space-x-2">
+                {/* Controle de volume */}
+                <div className="flex items-center space-x-2 w-full max-w-xs">
                   <button 
                     className="player-button" 
-                    aria-label={isMuted ? 'Ativar som' : 'Mutar'}
                     onClick={handleMuteToggle}
+                    aria-label={isMuted ? "Ativar som" : "Mudo"}
                   >
                     {isMuted || playerVolume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
                   </button>
@@ -288,16 +305,16 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
                     min={0}
                     max={100}
                     step={1}
-                    className="w-full"
+                    className="flex-1"
                     onValueChange={(value) => handleVolumeChange(value[0] / 100)}
                   />
                 </div>
                 
-                {/* Additional controls for karaoke */}
-                {currentTrack?.isKaraoke && (
-                  <div className="mt-4 space-y-2">
+                {/* Controles de áudio avançados */}
+                {currentTrack && (
+                  <div className="w-full space-y-4 border-t border-border/50 pt-4 mt-4">
                     <div className="flex flex-col space-y-1">
-                      <label className="text-sm">Remoção de voz: {vocalRemoval ? 'Ativada' : 'Desativada'}</label>
+                      <label className="text-sm">Remoção de vocal: {vocalRemoval ? 'Ativada' : 'Desativada'}</label>
                       <Slider
                         value={[vocalRemoval ? 100 : 0]}
                         min={0}
@@ -336,8 +353,8 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -154,19 +154,19 @@ const NavigationBar = () => {
         addToPlaylist(track);
         setCurrentTrack(track);
         
-        // Mostrar notificau00e7u00e3o de sucesso
+        // Mostrar notificação de sucesso
         toast({
           title: "Arquivo aberto com sucesso",
           description: `Reproduzindo "${track.title}"`,
         });
       }
     } catch (error) {
-      console.error('Erro ao abrir arquivo de mu00edsica:', error);
+      console.error('Erro ao abrir arquivo de música:', error);
       
       // Mostrar mensagem de erro mais detalhada
       toast({
         title: "Erro ao abrir arquivo",
-        description: "Nu00e3o foi possu00edvel abrir o arquivo de mu00edsica. Verifique se o formato u00e9 suportado.",
+        description: "Não foi possível abrir o arquivo de música. Verifique se o formato é suportado.",
         variant: "destructive"
       });
       
@@ -183,7 +183,7 @@ const NavigationBar = () => {
           });
         }
       } catch (fallbackError) {
-        console.error('Erro no mu00e9todo fallback:', fallbackError);
+        console.error('Erro no método fallback:', fallbackError);
       }
     }
   };
@@ -191,91 +191,84 @@ const NavigationBar = () => {
   const handleOpenMediaFile = openSingleMediaFile;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-30">
-      <nav className="bg-background/80 backdrop-blur-lg border-t border-border/50 py-2 px-4">
-        <div className="flex justify-between items-center">
-          {/* Menu de navegação principal */}
-          <div className="flex space-x-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  'flex flex-col items-center justify-center p-2 rounded-md transition-colors',
-                  isActive(item.path) 
-                    ? 'text-primary bg-primary/10' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+    <nav className="bg-background/80 backdrop-blur-lg border-t border-border/50 py-1">
+      <div className="flex justify-between items-center px-2">
+        {/* Menu de navegação principal */}
+        <div className="flex space-x-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                'nav-item',
+                isActive(item.path) && 'active'
+              )}
+            >
+              <item.icon size={18} />
+              <span className="text-[10px] mt-1">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Botões de ação */}
+        <div className="flex space-x-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="nav-item">
+                <FolderOpen size={18} />
+                <span className="text-[10px] mt-1">Folders</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="end">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Music Folders</h3>
+                
+                {musicFolders.length > 0 ? (
+                  <div className="space-y-1">
+                    {musicFolders.map((folder) => (
+                      <Button 
+                        key={folder.name}
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full justify-start text-xs"
+                        onClick={() => openMusicFolder(folder.name)}
+                      >
+                        <FolderOpen size={14} className="mr-2" />
+                        {folder.name}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No folders added yet</p>
                 )}
-              >
-                <item.icon size={20} />
-                <span className="text-xs mt-1">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-          
-          {/* Botões de ação */}
-          <div className="flex space-x-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="rounded-full hover:bg-accent"
-                  aria-label="Pastas de música"
-                >
-                  <FolderOpen size={20} />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-2" align="end">
-                <div className="space-y-2">
-                  <div className="font-medium">Pastas de Música</div>
-                  
-                  {musicFolders.length > 0 ? (
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {musicFolders.map((folder, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-center justify-between p-2 rounded-md hover:bg-accent"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <FolderOpen size={16} className="text-muted-foreground" />
-                            <span className="truncate">{folder.name}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground p-2">
-                      Nenhuma pasta adicionada
-                    </div>
-                  )}
+                
+                <div className="flex flex-col space-y-1 pt-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={selectMusicFolder}
+                  >
+                    <FolderOpen size={14} className="mr-2" />
+                    Add Music Folder
+                  </Button>
                   
                   <Button 
-                    onClick={selectMusicFolder}
-                    className="w-full justify-start"
-                    variant="outline"
-                    size="sm"
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={handleOpenMediaFile}
                   >
-                    <FolderOpen size={16} className="mr-2" />
-                    Adicionar pasta
+                    <Music size={14} className="mr-2" />
+                    Open Media File
                   </Button>
                 </div>
-              </PopoverContent>
-            </Popover>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="rounded-full hover:bg-accent"
-              aria-label="Abrir arquivo"
-              onClick={handleOpenMediaFile}
-            >
-              <Music size={20} />
-            </Button>
-          </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 };
 

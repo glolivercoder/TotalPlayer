@@ -29,8 +29,9 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="min-h-screen bg-background text-foreground flex flex-col">
-              <div className="flex-1 pb-20 overflow-auto">
+            <div className="h-screen flex flex-col bg-background text-foreground">
+              {/* Área de conteúdo principal com rolagem */}
+              <div className="flex-1 overflow-y-auto pb-[120px]">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/search" element={<SearchPage />} />
@@ -41,14 +42,16 @@ const App = () => {
                 </Routes>
               </div>
               
-              <div className="fixed bottom-0 left-0 right-0 z-10">
-                <NowPlaying 
-                  expanded={playerExpanded} 
-                  onToggleExpand={togglePlayerExpanded} 
-                />
+              {/* Controles fixos na parte inferior */}
+              <div className="fixed bottom-0 left-0 right-0 z-30">
+                <div className="flex flex-col">
+                  <NowPlaying 
+                    expanded={playerExpanded} 
+                    onToggleExpand={togglePlayerExpanded} 
+                  />
+                  <NavigationBar />
+                </div>
               </div>
-              
-              <NavigationBar />
             </div>
           </BrowserRouter>
         </AudioPlayerProvider>
