@@ -30,7 +30,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <div className="min-h-screen bg-background text-foreground flex flex-col">
-              <div className="flex-1 pb-24 overflow-auto">
+              <div className="flex-1 pb-20 overflow-auto">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/search" element={<SearchPage />} />

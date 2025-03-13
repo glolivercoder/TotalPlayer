@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -19,22 +18,22 @@ const HomePage = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <div className="flex-1 px-4 pb-32">
+      <div className="flex-1 px-2 pb-24 overflow-y-auto">
         {/* Recently played */}
-        <section className="my-6 animate-slide-up animation-delay-100">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Recently Played</h2>
+        <section className="my-3 animate-slide-up animation-delay-100">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-lg font-semibold">Recently Played</h2>
             <Link 
               to="/recently-played" 
-              className="text-sm text-muted-foreground flex items-center hover:text-primary transition-colors"
+              className="text-xs text-muted-foreground flex items-center hover:text-primary transition-colors"
             >
               See all
-              <ChevronRight size={16} />
+              <ChevronRight size={14} />
             </Link>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {albums.slice(0, 5).map((album) => (
+          <div className="grid grid-cols-3 gap-2">
+            {albums.slice(0, 6).map((album) => (
               <Link 
                 key={album.id}
                 to={`/album/${album.id}`}
@@ -43,32 +42,32 @@ const HomePage = () => {
                 <AlbumArt 
                   src={album.cover} 
                   alt={album.title}
-                  size="md"
-                  className="shadow-md mb-3 rounded-xl"
+                  size="xs"
+                  className="shadow-sm mb-1 rounded-lg"
                 />
-                <h3 className="font-medium text-sm truncate w-full">{album.title}</h3>
-                <p className="text-muted-foreground text-xs truncate w-full">{album.artist}</p>
+                <h3 className="font-medium text-xs truncate w-full">{album.title}</h3>
+                <p className="text-muted-foreground text-[10px] truncate w-full">{album.artist}</p>
               </Link>
             ))}
           </div>
         </section>
         
         {/* Made for you */}
-        <section className="my-10 animate-slide-up animation-delay-200">
-          <h2 className="text-xl font-semibold mb-4">Made For You</h2>
-          <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/20 p-4">
-            <div className="flex flex-col sm:flex-row items-center gap-6">
+        <section className="my-4 animate-slide-up animation-delay-200">
+          <h2 className="text-lg font-semibold mb-2">Made For You</h2>
+          <div className="rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/20 p-3">
+            <div className="flex items-center gap-3">
               <img 
                 src="https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&auto=format&fit=crop" 
                 alt="Weekly Mix"
-                className="rounded-xl w-40 h-40 object-cover shadow-lg"
+                className="rounded-lg w-20 h-20 object-cover shadow-md"
               />
               
               <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-1">Your Weekly Mix</h3>
-                <p className="text-muted-foreground mb-4">Personalized tracks based on your listening history</p>
+                <h3 className="text-base font-bold mb-1">Your Weekly Mix</h3>
+                <p className="text-muted-foreground text-xs mb-2">Personalized tracks based on your history</p>
                 
-                <button className="bg-primary text-primary-foreground font-medium px-6 py-2 rounded-full hover:bg-primary/90 transition-colors">
+                <button className="bg-primary text-primary-foreground font-medium px-4 py-1 text-xs rounded-full hover:bg-primary/90 transition-colors">
                   Play Now
                 </button>
               </div>
@@ -77,16 +76,17 @@ const HomePage = () => {
         </section>
         
         {/* Recently added */}
-        <section className="my-10 animate-slide-up animation-delay-300">
-          <h2 className="text-xl font-semibold mb-4">Recently Added</h2>
-          <div className="space-y-2">
-            {tracks.slice(0, 4).map((track) => (
+        <section className="my-4 animate-slide-up animation-delay-300">
+          <h2 className="text-lg font-semibold mb-2">Recently Added</h2>
+          <div className="space-y-1">
+            {tracks.slice(0, 5).map((track) => (
               <TrackItem 
                 key={track.id}
                 track={track}
                 isPlaying={currentTrackId === track.id}
                 onPlay={() => handlePlayTrack(track.id)}
                 showAlbum
+                compact
               />
             ))}
           </div>

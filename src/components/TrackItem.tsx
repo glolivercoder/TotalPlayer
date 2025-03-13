@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PlayCircle, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,25 +14,31 @@ interface TrackItemProps {
   isPlaying?: boolean;
   onPlay?: () => void;
   showAlbum?: boolean;
+  compact?: boolean;
 }
 
 const TrackItem = ({ 
   track, 
   isPlaying = false, 
   onPlay,
-  showAlbum = false
+  showAlbum = false,
+  compact = false
 }: TrackItemProps) => {
   return (
     <div 
       className={cn(
-        'group flex items-center justify-between p-3 rounded-xl transition-all duration-300',
+        'group flex items-center justify-between rounded-xl transition-all duration-300',
+        compact ? 'p-2' : 'p-3',
         isPlaying 
           ? 'bg-primary/10 text-primary' 
           : 'hover:bg-secondary'
       )}
     >
       <div className="flex items-center space-x-3 flex-1 min-width-0">
-        <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
+        <div className={cn(
+          'relative rounded-md overflow-hidden flex-shrink-0',
+          compact ? 'w-10 h-10' : 'w-12 h-12'
+        )}>
           <img 
             src={track.albumArt} 
             alt={track.album || track.title}
@@ -48,7 +53,7 @@ const TrackItem = ({
               onClick={onPlay}
               aria-label={isPlaying ? "Now playing" : "Play"}
             >
-              <PlayCircle size={28} fill={isPlaying ? 'currentColor' : 'none'} />
+              <PlayCircle size={compact ? 22 : 28} fill={isPlaying ? 'currentColor' : 'none'} />
             </button>
           </div>
         </div>
@@ -56,11 +61,15 @@ const TrackItem = ({
         <div className="truncate flex-1 min-width-0">
           <h3 className={cn(
             'font-medium truncate',
+            compact ? 'text-sm' : 'text-base',
             isPlaying && 'text-primary'
           )}>
             {track.title}
           </h3>
-          <p className="text-sm text-muted-foreground truncate">
+          <p className={cn(
+            'text-muted-foreground truncate',
+            compact ? 'text-xs' : 'text-sm'
+          )}>
             {track.artist}
             {showAlbum && track.album && ` • ${track.album}`}
           </p>
@@ -68,12 +77,15 @@ const TrackItem = ({
       </div>
       
       <div className="flex items-center space-x-4">
-        <span className="text-sm text-muted-foreground">{track.duration}</span>
+        <span className={cn(
+          'text-muted-foreground',
+          compact ? 'text-xs' : 'text-sm'
+        )}>{track.duration}</span>
         <button 
           className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
           aria-label="More options"
         >
-          <MoreHorizontal size={20} />
+          <MoreHorizontal size={compact ? 16 : 20} />
         </button>
       </div>
     </div>
