@@ -1,0 +1,159 @@
+/* Estilos personalizados para o player e a barra de navegau00e7u00e3o */
+
+/* Efeito de vidro (glass) para o player */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para os botu00f5es do player */
+.player-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--foreground);
+  transition: all 0.2s ease;
+}
+
+.player-button:hover {
+  background-color: rgba(var(--primary), 0.1);
+  color: rgb(var(--primary));
+}
+
+.player-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.player-button.primary {
+  background-color: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+}
+
+.player-button.primary:hover {
+  opacity: 0.9;
+}
+
+/* Estilo para o slider de progresso */
+.progress-slider {
+  height: 4px;
+  cursor: pointer;
+  background-color: rgba(var(--muted-foreground), 0.2);
+  border-radius: 2px;
+  position: relative;
+}
+
+.progress-slider-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgb(var(--primary));
+  border-radius: 2px;
+}
+
+/* Animau00e7u00f5es */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+/* Correu00e7u00e3o para o layout em telas pequenas */
+@media (max-width: 640px) {
+  .player-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .volume-control {
+    width: 100%;
+  }
+}
+
+/* Estilos para o visualizador de mu00fasica */
+.music-visualizer {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.music-visualizer-bar {
+  width: 3px;
+  background-color: rgb(var(--primary));
+  border-radius: 1px;
+  transition: height 0.1s ease;
+}
+
+/* Estilos para o modo expandido do player */
+.expanded-player-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .expanded-player-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Estilos para a capa do u00e1lbum */
+.album-art {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.album-art:hover {
+  transform: scale(1.02);
+}
+
+.album-art.playing {
+  animation: pulse 4s infinite ease-in-out;
+}
+
+/* Estilos para a barra de navegau00e7u00e3o */
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: rgba(var(--accent), 0.8);
+}
+
+.nav-item.active {
+  color: rgb(var(--primary));
+  background-color: rgba(var(--primary), 0.1);
+}

@@ -1,51 +1,45 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface AlbumArtProps {
   src: string;
   alt: string;
-  className?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg';
   isPlaying?: boolean;
+  className?: string;
 }
 
-const AlbumArt = ({ 
-  src, 
-  alt, 
-  className,
-  size = 'md',
-  isPlaying = false
-}: AlbumArtProps) => {
+const AlbumArt = ({ src, alt, size = 'md', isPlaying = false, className }: AlbumArtProps) => {
   const sizeClasses = {
     sm: 'w-12 h-12',
-    md: 'w-16 h-16',
-    lg: 'w-48 h-48 sm:w-64 sm:h-64',
-    xl: 'w-64 h-64 sm:w-80 sm:h-80'
+    md: 'w-24 h-24',
+    lg: 'w-full h-full max-w-xs max-h-xs'
   };
-
+  
   return (
     <div 
       className={cn(
-        'relative rounded-xl overflow-hidden bg-muted/50 shadow-lg transition-all duration-500',
-        isPlaying ? 'shadow-xl' : 'shadow',
+        'album-art relative overflow-hidden rounded-lg bg-background/20',
         sizeClasses[size],
+        isPlaying && 'album-art-playing',
         className
       )}
     >
       <img 
         src={src} 
         alt={alt} 
-        loading="lazy"
-        className={cn(
-          'object-cover w-full h-full transition-transform duration-500',
-          isPlaying && size === 'lg' && 'scale-105'
-        )}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          // Fallback to default image if loading fails
+          const target = e.target as HTMLImageElement;
+          target.src = '/default-album-art.png';
+        }}
       />
-      <div className={cn(
-        'absolute inset-0 bg-gradient-to-b from-black/0 to-black/20 opacity-0 transition-opacity duration-300',
-        isPlaying && 'opacity-100'
-      )} />
+      {isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+          <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+        </div>
+      )}
     </div>
   );
 };
