@@ -154,19 +154,19 @@ const NavigationBar = () => {
         addToPlaylist(track);
         setCurrentTrack(track);
         
-        // Mostrar notificação de sucesso
+        // Mostrar notificau00e7u00e3o de sucesso
         toast({
           title: "Arquivo aberto com sucesso",
           description: `Reproduzindo "${track.title}"`,
         });
       }
     } catch (error) {
-      console.error('Erro ao abrir arquivo de música:', error);
+      console.error('Erro ao abrir arquivo de mu00fasica:', error);
       
       // Mostrar mensagem de erro mais detalhada
       toast({
         title: "Erro ao abrir arquivo",
-        description: "Não foi possível abrir o arquivo de música. Verifique se o formato é suportado.",
+        description: "Nu00e3o foi possu00edvel abrir o arquivo de mu00fasica. Verifique se o formato u00e9 suportado.",
         variant: "destructive"
       });
       
@@ -183,7 +183,7 @@ const NavigationBar = () => {
           });
         }
       } catch (fallbackError) {
-        console.error('Erro no método fallback:', fallbackError);
+        console.error('Erro no mu00e9todo fallback:', fallbackError);
       }
     }
   };
@@ -191,10 +191,10 @@ const NavigationBar = () => {
   const handleOpenMediaFile = openSingleMediaFile;
 
   return (
-    <nav className="bg-background/80 backdrop-blur-lg border-t border-border/50 py-1">
-      <div className="flex justify-between items-center px-2">
-        {/* Menu de navegação principal */}
-        <div className="flex space-x-1">
+    <nav className="bg-background/80 backdrop-blur-lg border-t border-border/50 py-2">
+      <div className="flex justify-between items-center px-4">
+        {/* Menu de navegau00e7u00e3o principal */}
+        <div className="flex space-x-3">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -204,19 +204,19 @@ const NavigationBar = () => {
                 isActive(item.path) && 'active'
               )}
             >
-              <item.icon size={18} />
-              <span className="text-[10px] mt-1">{item.label}</span>
+              <item.icon size={24} />
+              <span className="text-xs mt-1">{item.label}</span>
             </Link>
           ))}
         </div>
 
-        {/* Botões de ação */}
-        <div className="flex space-x-1">
+        {/* Botu00f5es de au00e7u00e3o */}
+        <div className="flex space-x-2">
           <Popover>
             <PopoverTrigger asChild>
               <button className="nav-item">
-                <FolderOpen size={18} />
-                <span className="text-[10px] mt-1">Folders</span>
+                <FolderOpen size={24} />
+                <span className="text-xs mt-1">Folders</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-60 p-2" align="end">
@@ -233,7 +233,7 @@ const NavigationBar = () => {
                         className="w-full justify-start text-xs"
                         onClick={() => openMusicFolder(folder.name)}
                       >
-                        <FolderOpen size={14} className="mr-2" />
+                        <FolderOpen size={16} className="mr-2" />
                         {folder.name}
                       </Button>
                     ))}
@@ -249,7 +249,7 @@ const NavigationBar = () => {
                     className="text-xs"
                     onClick={selectMusicFolder}
                   >
-                    <FolderOpen size={14} className="mr-2" />
+                    <FolderOpen size={16} className="mr-2" />
                     Add Music Folder
                   </Button>
                   
@@ -259,7 +259,7 @@ const NavigationBar = () => {
                     className="text-xs"
                     onClick={handleOpenMediaFile}
                   >
-                    <Music size={14} className="mr-2" />
+                    <Music size={16} className="mr-2" />
                     Open Media File
                   </Button>
                 </div>

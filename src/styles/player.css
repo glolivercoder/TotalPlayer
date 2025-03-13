@@ -14,8 +14,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background-color: transparent;
   color: var(--foreground);
@@ -23,8 +23,8 @@
 }
 
 .player-button:hover {
-  background-color: rgba(var(--primary), 0.1);
-  color: rgb(var(--primary));
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(59, 130, 246);
 }
 
 .player-button:disabled {
@@ -33,8 +33,8 @@
 }
 
 .player-button.primary {
-  background-color: rgb(var(--primary));
-  color: rgb(var(--primary-foreground));
+  background-color: rgb(59, 130, 246);
+  color: white;
 }
 
 .player-button.primary:hover {
@@ -55,7 +55,7 @@
   top: 0;
   left: 0;
   height: 100%;
-  background-color: rgb(var(--primary));
+  background-color: rgb(59, 130, 246);
   border-radius: 1.5px;
 }
 
@@ -107,7 +107,7 @@
 
 .music-visualizer-bar {
   width: 2px;
-  background-color: rgb(var(--primary));
+  background-color: rgb(59, 130, 246);
   border-radius: 1px;
   transition: height 0.1s ease;
 }
@@ -156,12 +156,13 @@
 }
 
 .nav-item:hover {
-  background-color: rgba(var(--accent), 0.8);
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(59, 130, 246);
 }
 
 .nav-item.active {
-  color: rgb(var(--primary));
-  background-color: rgba(var(--primary), 0.1);
+  color: rgb(59, 130, 246);
+  background-color: rgba(59, 130, 246, 0.1);
 }
 
 /* Otimizações para telas muito pequenas */

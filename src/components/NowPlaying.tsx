@@ -158,14 +158,14 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
           </div>
           
           {/* Controles de reprodução */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-2">
             <button 
               className="player-button" 
               onClick={previous}
               disabled={!currentTrack}
               aria-label="Anterior"
             >
-              <SkipBack size={16} />
+              <SkipBack size={24} />
             </button>
             
             <button 
@@ -174,7 +174,7 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
               disabled={!currentTrack}
               aria-label={isPlaying ? "Pausar" : "Reproduzir"}
             >
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
             
             <button 
@@ -183,7 +183,7 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
               disabled={!currentTrack}
               aria-label="Próxima"
             >
-              <SkipForward size={16} />
+              <SkipForward size={24} />
             </button>
             
             <button 
@@ -191,7 +191,7 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
               onClick={onToggleExpand}
               aria-label={expanded ? "Minimizar player" : "Expandir player"}
             >
-              {expanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+              {expanded ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
             </button>
           </div>
         </div>
@@ -268,16 +268,16 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
                     disabled={!currentTrack}
                     aria-label="Anterior"
                   >
-                    <SkipBack size={24} />
+                    <SkipBack size={32} />
                   </button>
                   
                   <button 
-                    className="player-button primary w-12 h-12" 
+                    className="player-button primary w-16 h-16" 
                     onClick={toggle}
                     disabled={!currentTrack}
                     aria-label={isPlaying ? "Pausar" : "Reproduzir"}
                   >
-                    {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+                    {isPlaying ? <Pause size={32} /> : <Play size={32} />}
                   </button>
                   
                   <button 
@@ -286,7 +286,7 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
                     disabled={!currentTrack}
                     aria-label="Próxima"
                   >
-                    <SkipForward size={24} />
+                    <SkipForward size={32} />
                   </button>
                 </div>
                 
@@ -297,7 +297,7 @@ const NowPlaying = ({ expanded = false, onToggleExpand }: NowPlayingProps) => {
                     onClick={handleMuteToggle}
                     aria-label={isMuted ? "Ativar som" : "Mudo"}
                   >
-                    {isMuted || playerVolume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                    {isMuted || playerVolume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
                   </button>
                   
                   <Slider
