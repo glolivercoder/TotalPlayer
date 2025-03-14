@@ -9,6 +9,7 @@ export interface YouTubeSearchResult {
   albumArt?: string;
   videoId: string;
   duration?: number;
+  contentType?: 'music' | 'video';
 }
 
 // Interface para faixas do YouTube Music
@@ -23,10 +24,11 @@ export interface YouTubeTrack {
   videoId: string;
   streamUrl: string;
   duration?: number;
+  contentType: 'music' | 'video';
 }
 
-// Dados de exemplo para o YouTube Music
-const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
+// Dados de exemplo para o YouTube Music (músicas)
+const SAMPLE_YOUTUBE_MUSIC_TRACKS: YouTubeTrack[] = [
   {
     id: `youtube-${uuidv4()}`,
     title: 'Billie Jean',
@@ -37,7 +39,8 @@ const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
     source: 'youtube',
     videoId: 'Zi_XfUwnJng',
     streamUrl: 'https://www.youtube.com/watch?v=Zi_XfUwnJng',
-    duration: 294
+    duration: 294,
+    contentType: 'music'
   },
   {
     id: `youtube-${uuidv4()}`,
@@ -49,7 +52,8 @@ const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
     source: 'youtube',
     videoId: 'fJ9rUzIMcZQ',
     streamUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
-    duration: 367
+    duration: 367,
+    contentType: 'music'
   },
   {
     id: `youtube-${uuidv4()}`,
@@ -61,7 +65,8 @@ const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
     source: 'youtube',
     videoId: 'JGwWNGJdvx8',
     streamUrl: 'https://www.youtube.com/watch?v=JGwWNGJdvx8',
-    duration: 253
+    duration: 253,
+    contentType: 'music'
   },
   {
     id: `youtube-${uuidv4()}`,
@@ -73,7 +78,8 @@ const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
     source: 'youtube',
     videoId: 'kJQP7kiw5Fk',
     streamUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
-    duration: 282
+    duration: 282,
+    contentType: 'music'
   },
   {
     id: `youtube-${uuidv4()}`,
@@ -85,7 +91,8 @@ const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
     source: 'youtube',
     videoId: 'OPf0YbXqDm0',
     streamUrl: 'https://www.youtube.com/watch?v=OPf0YbXqDm0',
-    duration: 271
+    duration: 271,
+    contentType: 'music'
   },
   {
     id: `youtube-${uuidv4()}`,
@@ -97,19 +104,60 @@ const SAMPLE_YOUTUBE_TRACKS: YouTubeTrack[] = [
     source: 'youtube',
     videoId: 'RgKAFK5djSk',
     streamUrl: 'https://www.youtube.com/watch?v=RgKAFK5djSk',
-    duration: 237
+    duration: 237,
+    contentType: 'music'
+  }
+];
+
+// Dados de exemplo para o YouTube Music (vídeos)
+const SAMPLE_YOUTUBE_VIDEO_TRACKS: YouTubeTrack[] = [
+  {
+    id: `youtube-${uuidv4()}`,
+    title: 'React JS Tutorial for Beginners',
+    artist: 'Programming with Mosh',
+    albumArt: 'https://i.ytimg.com/vi/SqcY0GlETPk/maxresdefault.jpg',
+    path: 'https://www.youtube.com/watch?v=SqcY0GlETPk',
+    source: 'youtube',
+    videoId: 'SqcY0GlETPk',
+    streamUrl: 'https://www.youtube.com/watch?v=SqcY0GlETPk',
+    duration: 2400,
+    contentType: 'video'
   },
   {
     id: `youtube-${uuidv4()}`,
-    title: 'Gangnam Style',
-    artist: 'PSY',
-    album: 'PSY 6 (Six Rules), Part 1',
-    albumArt: 'https://i.ytimg.com/vi/9bZkp7q19f0/maxresdefault.jpg',
-    path: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+    title: 'How to Make a Website with React JS',
+    artist: 'Brian Design',
+    albumArt: 'https://i.ytimg.com/vi/I2UBjN5ER4s/maxresdefault.jpg',
+    path: 'https://www.youtube.com/watch?v=I2UBjN5ER4s',
     source: 'youtube',
-    videoId: '9bZkp7q19f0',
-    streamUrl: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
-    duration: 252
+    videoId: 'I2UBjN5ER4s',
+    streamUrl: 'https://www.youtube.com/watch?v=I2UBjN5ER4s',
+    duration: 3600,
+    contentType: 'video'
+  },
+  {
+    id: `youtube-${uuidv4()}`,
+    title: 'TypeScript Course for Beginners',
+    artist: 'Academind',
+    albumArt: 'https://i.ytimg.com/vi/BwuLxPH8IDs/maxresdefault.jpg',
+    path: 'https://www.youtube.com/watch?v=BwuLxPH8IDs',
+    source: 'youtube',
+    videoId: 'BwuLxPH8IDs',
+    streamUrl: 'https://www.youtube.com/watch?v=BwuLxPH8IDs',
+    duration: 3200,
+    contentType: 'video'
+  },
+  {
+    id: `youtube-${uuidv4()}`,
+    title: 'Next.js Crash Course',
+    artist: 'Traversy Media',
+    albumArt: 'https://i.ytimg.com/vi/mTz0GXj8NN0/maxresdefault.jpg',
+    path: 'https://www.youtube.com/watch?v=mTz0GXj8NN0',
+    source: 'youtube',
+    videoId: 'mTz0GXj8NN0',
+    streamUrl: 'https://www.youtube.com/watch?v=mTz0GXj8NN0',
+    duration: 1800,
+    contentType: 'video'
   }
 ];
 
@@ -122,24 +170,50 @@ class YouTubeMusicService {
 
   // Inicializar o serviço
   async initialize(): Promise<boolean> {
-    if (this.initialized) return true;
-
     try {
-      // Simulação de inicialização
-      console.log('Inicializando serviço do YouTube Music...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (this.initialized) {
+        console.log('YouTubeMusicService já inicializado');
+        return true;
+      }
+
+      console.log('Inicializando YouTubeMusicService...');
+      
+      // Verificar se a API do YouTube está carregada
+      if (typeof window !== 'undefined' && !(window as any).YT) {
+        return new Promise<boolean>((resolve) => {
+          // Definir a função de callback para quando a API estiver carregada
+          window.onYouTubeIframeAPIReady = () => {
+            console.log('API do YouTube carregada com sucesso via YouTubeMusicService');
+            this.initialized = true;
+            resolve(true);
+          };
+          
+          // Carregar o script da API
+          const tag = document.createElement('script');
+          tag.src = 'https://www.youtube.com/iframe_api';
+          tag.onerror = () => {
+            console.error('Erro ao carregar a API do YouTube via YouTubeMusicService');
+            resolve(false);
+          };
+          const firstScriptTag = document.getElementsByTagName('script')[0];
+          firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        });
+      }
+      
+      // Simular tempo de inicialização (em uma aplicação real, isso seria a autenticação com a API)
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       this.initialized = true;
-      console.log('Serviço do YouTube Music inicializado com sucesso');
+      console.log('YouTubeMusicService inicializado com sucesso');
       return true;
     } catch (error) {
-      console.error('Erro ao inicializar o serviço do YouTube Music:', error);
+      console.error('Erro ao inicializar YouTubeMusicService:', error);
       return false;
     }
   }
 
   // Buscar músicas no YouTube Music
-  async searchTracks(query: string): Promise<YouTubeTrack[]> {
+  async searchTracks(query: string, contentType: 'music' | 'video' = 'music'): Promise<YouTubeTrack[]> {
     if (!query) return [];
     
     try {
@@ -149,20 +223,22 @@ class YouTubeMusicService {
       }
 
       // Simular uma busca filtrando os dados de exemplo
-      console.log(`Buscando músicas no YouTube Music: "${query}"`);
+      console.log(`Buscando ${contentType === 'music' ? 'músicas' : 'vídeos'} no YouTube: "${query}"`);
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simular tempo de resposta
       
       const normalizedQuery = query.toLowerCase();
-      const filteredTracks = SAMPLE_YOUTUBE_TRACKS.filter(track => 
+      const tracksToSearch = contentType === 'music' ? SAMPLE_YOUTUBE_MUSIC_TRACKS : SAMPLE_YOUTUBE_VIDEO_TRACKS;
+      
+      const filteredTracks = tracksToSearch.filter(track => 
         track.title.toLowerCase().includes(normalizedQuery) ||
         track.artist.toLowerCase().includes(normalizedQuery) ||
         (track.album && track.album.toLowerCase().includes(normalizedQuery))
       );
       
-      // Se não houver resultados específicos, retornar todos os exemplos
-      return filteredTracks.length > 0 ? filteredTracks : SAMPLE_YOUTUBE_TRACKS;
+      // Se não houver resultados específicos, retornar todos os exemplos do tipo selecionado
+      return filteredTracks.length > 0 ? filteredTracks : tracksToSearch;
     } catch (error) {
-      console.error('Erro ao buscar músicas no YouTube Music:', error);
+      console.error(`Erro ao buscar ${contentType === 'music' ? 'músicas' : 'vídeos'} no YouTube:`, error);
       return [];
     }
   }
@@ -176,7 +252,7 @@ class YouTubeMusicService {
       }
 
       // Buscar nos dados de exemplo
-      const track = SAMPLE_YOUTUBE_TRACKS.find(t => t.videoId === videoId);
+      const track = [...SAMPLE_YOUTUBE_MUSIC_TRACKS, ...SAMPLE_YOUTUBE_VIDEO_TRACKS].find(t => t.videoId === videoId);
       return track || null;
     } catch (error) {
       console.error('Erro ao obter detalhes da música:', error);
@@ -185,7 +261,7 @@ class YouTubeMusicService {
   }
 
   // Obter músicas populares (retorna todos os exemplos)
-  async getPopularTracks(): Promise<YouTubeTrack[]> {
+  async getPopularTracks(contentType: 'music' | 'video' = 'music'): Promise<YouTubeTrack[]> {
     try {
       // Garantir que o serviço esteja inicializado
       if (!this.initialized) {
@@ -195,9 +271,9 @@ class YouTubeMusicService {
       // Simular tempo de resposta
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      return SAMPLE_YOUTUBE_TRACKS;
+      return contentType === 'music' ? SAMPLE_YOUTUBE_MUSIC_TRACKS : SAMPLE_YOUTUBE_VIDEO_TRACKS;
     } catch (error) {
-      console.error('Erro ao obter músicas populares:', error);
+      console.error(`Erro ao obter ${contentType === 'music' ? 'músicas' : 'vídeos'} populares:`, error);
       return [];
     }
   }
