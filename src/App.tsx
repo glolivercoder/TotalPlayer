@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import KaraokePage from "./pages/KaraokePage";
 import EqualizerPage from "./pages/EqualizerPage";
 import LibraryPage from "./pages/LibraryPage";
+import PlaybackPage from "./pages/PlaybackPage";
 import NavigationBar from "./components/NavigationBar";
 import NowPlaying from "./components/NowPlaying";
 import { AudioPlayerProvider } from "./services/AudioPlayerService";
@@ -39,6 +40,7 @@ const App = () => {
                   <Route path="/library" element={<LibraryPage />} />
                   <Route path="/karaoke" element={<KaraokePage />} />
                   <Route path="/equalizer" element={<EqualizerPage />} />
+                  <Route path="/playback" element={<PlaybackPage />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

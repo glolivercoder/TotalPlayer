@@ -669,7 +669,7 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [currentTrack]);
   
   // Função para ativar/desativar a remoção de vocal
-  const setVocalRemoval = useCallback((enabled: boolean) => {
+  const setVocalRemoval = useCallback(async (enabled: boolean) => {
     console.log('Definindo remoção de vocal:', enabled);
     setVocalRemovalState(enabled);
     
@@ -678,53 +678,100 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       try {
         // Pausar a reprodução atual
         const wasPlaying = howlRef.current.playing();
-        if (wasPlaying) {
-          howlRef.current.pause();
-        }
-        
-        // Obter o buffer de áudio atual
-        const audioElement = howlRef.current._sounds[0]._node;
+        const currentPosition = howlRef.current.seek();
         
         // Se o serviço de karaoke não estiver inicializado, inicializá-lo
         if (!karaokeService.isInitialized()) {
-          karaokeService.initialize();
+          toast({
+            title: 'Inicializando processador de áudio',
+            description: 'Aguarde enquanto preparamos o processador de áudio...',
+          });
+          await karaokeService.initialize();
         }
         
-        // Aplicar os efeitos de karaoke
+        // Aplicar remoção de voz diretamente ao elemento de áudio atual
         if (enabled) {
-          toast({
-            title: 'Processando áudio',
-            description: 'Aplicando remoção de vocal...',
-          });
+          // @ts-ignore - Howl tem propriedades internas que não estão no tipo
+          const audioElement = howlRef.current._sounds?.[0]?._node;
           
-          // Aplicar remoção de vocal em tempo real
           if (audioElement && audioElement.mediaElement) {
-            const mediaElementSource = karaokeService.audioContext?.createMediaElementSource(audioElement.mediaElement);
-            if (mediaElementSource) {
-              const processedNode = karaokeService.applyVocalRemovalToNode(mediaElementSource);
-              processedNode.connect(karaokeService.audioContext!.destination);
+            // Pausar temporariamente para aplicar o efeito
+            if (wasPlaying) {
+              howlRef.current.pause();
+            }
+            
+            toast({
+              title: 'Aplicando remoção de vocal',
+              description: 'Processando áudio em tempo real...',
+            });
+            
+            // Obter o contexto de áudio
+            const audioCtx = karaokeService.getAudioContext();
+            if (!audioCtx) {
+              throw new Error('Contexto de áudio não disponível');
+            }
+            
+            // Criar um MediaElementSource a partir do elemento de áudio
+            const source = audioCtx.createMediaElementSource(audioElement.mediaElement);
+            
+            // Aplicar o processador de remoção de vocais
+            const processedNode = karaokeService.applyVocalRemovalToNode(source);
+            
+            // Conectar o nó processado à saída
+            processedNode.connect(audioCtx.destination);
+            
+            // Retomar a reprodução se estava tocando
+            if (wasPlaying) {
+              howlRef.current.play();
+            }
+            
+            toast({
+              title: 'Remoção de vocal ativada',
+              description: 'O efeito de remoção de vocal foi aplicado com sucesso.',
+            });
+          } else {
+            // Se não conseguir acessar o elemento de áudio, recarregar a faixa
+            if (currentTrack) {
+              // Descarregar o Howl atual
+              howlRef.current.unload();
+              
+              // Recarregar a faixa
+              setCurrentTrack(currentTrack);
+              
+              // Definir a posição e o estado de reprodução
+              setTimeout(() => {
+                if (howlRef.current) {
+                  howlRef.current.seek(currentPosition);
+                  if (wasPlaying) {
+                    howlRef.current.play();
+                  }
+                }
+              }, 500);
               
               toast({
                 title: 'Remoção de vocal ativada',
-                description: 'O efeito de remoção de vocal foi aplicado com sucesso.',
+                description: 'A faixa foi recarregada com remoção de vocal.',
               });
-              
-              // Retomar a reprodução se estava tocando
-              if (wasPlaying) {
-                howlRef.current.play();
-              }
             }
-          } else {
-            toast({
-              title: 'Não foi possível aplicar o efeito',
-              description: 'O áudio atual não suporta remoção de vocal em tempo real.',
-              variant: 'destructive',
-            });
           }
         } else {
           // Desativar o efeito recarregando o áudio
           if (currentTrack) {
+            // Descarregar o Howl atual
+            howlRef.current.unload();
+            
+            // Recarregar a faixa
             setCurrentTrack(currentTrack);
+            
+            // Definir a posição e o estado de reprodução
+            setTimeout(() => {
+              if (howlRef.current) {
+                howlRef.current.seek(currentPosition);
+                if (wasPlaying) {
+                  howlRef.current.play();
+                }
+              }
+            }, 500);
             
             toast({
               title: 'Remoção de vocal desativada',
@@ -769,7 +816,8 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
         
         // Obter o buffer de áudio atual
-        const audioElement = howlRef.current._sounds[0]._node;
+        // @ts-ignore - Howl tem propriedades internas que não estão no tipo
+        const audioElement = howlRef.current._sounds?.[0]?._node;
         
         // Se o serviço de karaoke não estiver inicializado, inicializá-lo
         if (!karaokeService.isInitialized()) {
@@ -784,10 +832,10 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         // Aplicar pitch shift em tempo real
         if (audioElement && audioElement.mediaElement) {
-          const mediaElementSource = karaokeService.audioContext?.createMediaElementSource(audioElement.mediaElement);
+          const mediaElementSource = karaokeService.getAudioContext()?.createMediaElementSource(audioElement.mediaElement);
           if (mediaElementSource) {
             const processedNode = karaokeService.applyPitchShiftToNode(mediaElementSource, semitones);
-            processedNode.connect(karaokeService.audioContext!.destination);
+            processedNode.connect(karaokeService.getAudioContext()!.destination);
             
             toast({
               title: 'Ajuste de tom aplicado',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, LibraryBig, Download, Mic2, Sliders, FolderOpen, Music, Video } from 'lucide-react';
+import { Home, LibraryBig, Download, Mic2, Sliders, FolderOpen, Music, Video, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,7 @@ const NavigationBar = () => {
     { icon: Home, label: 'Home', path: '/' },
     { icon: LibraryBig, label: 'Library', path: '/library' },
     { icon: Mic2, label: 'Karaoke', path: '/karaoke' },
+    { icon: Play, label: 'Playback', path: '/playback' },
     { icon: Sliders, label: 'Equalizer', path: '/equalizer' }
   ];
   

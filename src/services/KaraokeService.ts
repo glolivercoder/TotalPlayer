@@ -1,7 +1,21 @@
-import { PitchShifter } from 'soundtouchjs';
 import * as Tone from 'tone';
 
-class KaraokeService {
+// Definir o tipo para o VocalRemover
+interface VocalRemover {
+  initialize(): void;
+  connect(sourceNode: AudioNode): AudioNode;
+  disconnect(): void;
+  setIntensity(value: number): void;
+}
+
+// Declarar a propriedade VocalRemover no objeto window
+declare global {
+  interface Window {
+    VocalRemover: new (audioContext: AudioContext) => VocalRemover;
+  }
+}
+
+export class KaraokeService {
   private audioContext: AudioContext | null = null;
   private sourceNode: AudioBufferSourceNode | null = null;
   private gainNode: GainNode | null = null;
@@ -17,6 +31,10 @@ class KaraokeService {
   private vocalRemovalEnabled: boolean = false;
   private currentPitchShift: number = 0;
   private currentTempo: number = 1.0;
+  private vocalRemoverNode: AudioWorkletNode | null = null;
+  private workletLoaded: boolean = false;
+  private vocalRemover: VocalRemover | null = null;
+  private scriptLoaded: boolean = false;
 
   // Inicializa o serviço de karaoke
   async initialize() {
@@ -24,6 +42,30 @@ class KaraokeService {
       if (!this.audioContext) {
         this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         console.log('KaraokeService: AudioContext inicializado');
+        
+        // Carregar o script de remoção de vocais
+        if (!this.scriptLoaded) {
+          try {
+            await this.loadVocalRemoverScript();
+            console.log('KaraokeService: Script de remoção de vocais carregado com sucesso');
+            this.scriptLoaded = true;
+          } catch (scriptError) {
+            console.error('KaraokeService: Erro ao carregar script de remoção de vocais:', scriptError);
+          }
+        }
+        
+        // Carregar o AudioWorklet para remoção de vocais (método alternativo)
+        if (!this.workletLoaded) {
+          try {
+            const workletUrl = new URL('/src/services/VocalRemoverProcessor.js', window.location.origin);
+            await this.audioContext.audioWorklet.addModule(workletUrl.href);
+            console.log('KaraokeService: VocalRemoverProcessor carregado com sucesso');
+            this.workletLoaded = true;
+          } catch (workletError) {
+            console.error('KaraokeService: Erro ao carregar VocalRemoverProcessor:', workletError);
+            // Continuar mesmo se o worklet falhar, usaremos o método alternativo
+          }
+        }
       }
       return true;
     } catch (error) {
@@ -32,130 +74,127 @@ class KaraokeService {
     }
   }
 
+  // Carregar o script de remoção de vocais
+  private async loadVocalRemoverScript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Verificar se o script já foi carregado
+      if (window.VocalRemover) {
+        this.scriptLoaded = true;
+        resolve();
+        return;
+      }
+
+      // Criar um elemento de script
+      const script = document.createElement('script');
+      script.src = '/vocal-remover-processor.js';
+      script.async = true;
+      
+      // Definir callbacks para sucesso e erro
+      script.onload = () => {
+        this.scriptLoaded = true;
+        resolve();
+      };
+      
+      script.onerror = (error) => {
+        reject(error);
+      };
+      
+      // Adicionar o script ao documento
+      document.head.appendChild(script);
+    });
+  }
+
   // Verifica se o serviço está inicializado
   isInitialized(): boolean {
-    return !!this.audioContext;
+    return this.audioContext !== null;
   }
 
-  // Carrega um arquivo de áudio para processamento
-  async loadAudio(audioData: ArrayBuffer): Promise<boolean> {
-    try {
-      if (!this.audioContext) {
-        await this.initialize();
-      }
-
-      // Limpar recursos anteriores
-      this.clearResources();
-
-      // Decodificar o buffer de áudio
-      this.audioBuffer = await this.audioContext!.decodeAudioData(audioData);
-      console.log('KaraokeService: Áudio decodificado com sucesso', {
-        duration: this.audioBuffer.duration,
-        numberOfChannels: this.audioBuffer.numberOfChannels,
-        sampleRate: this.audioBuffer.sampleRate
-      });
-
-      return true;
-    } catch (error) {
-      console.error('KaraokeService: Erro ao carregar áudio:', error);
-      return false;
+  // Processa um arquivo de áudio para remoção de voz
+  async processAudioFile(file: File): Promise<AudioBuffer | null> {
+    if (!this.audioContext) {
+      console.error('KaraokeService: AudioContext não inicializado');
+      return null;
     }
-  }
 
-  // Processa o áudio com remoção de voz e/ou ajuste de pitch
-  async processAudio(options: {
-    vocalRemoval: boolean;
-    pitchShift: number;
-    tempo: number;
-  }): Promise<AudioBuffer | null> {
     try {
-      if (!this.audioContext || !this.audioBuffer) {
-        console.error('KaraokeService: AudioContext ou AudioBuffer não inicializados');
-        return null;
-      }
-
       this.isProcessing = true;
-      this.vocalRemovalEnabled = options.vocalRemoval;
-      this.currentPitchShift = options.pitchShift;
-      this.currentTempo = options.tempo / 100; // Converter de porcentagem para multiplicador
 
-      // Criar um novo AudioBuffer para o resultado processado
-      const processedBuffer = this.audioContext.createBuffer(
-        this.audioBuffer.numberOfChannels,
-        this.audioBuffer.length,
-        this.audioBuffer.sampleRate
-      );
+      // Ler o arquivo como ArrayBuffer
+      const arrayBuffer = await this.readFileAsArrayBuffer(file);
+      
+      // Decodificar o ArrayBuffer como AudioBuffer
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      this.audioBuffer = audioBuffer;
 
-      // Aplicar remoção de voz se habilitado
-      if (options.vocalRemoval) {
-        // Implementação da técnica de cancelamento de fase central
-        if (this.audioBuffer.numberOfChannels >= 2) {
-          const leftChannel = this.audioBuffer.getChannelData(0);
-          const rightChannel = this.audioBuffer.getChannelData(1);
-          const leftOutput = processedBuffer.getChannelData(0);
-          const rightOutput = processedBuffer.getChannelData(1);
-
-          // Aplicar cancelamento de fase para remover vocais centrais
-          for (let i = 0; i < leftChannel.length; i++) {
-            // Subtrair o canal direito do esquerdo para cancelar o áudio central (onde geralmente estão as vozes)
-            leftOutput[i] = leftChannel[i] - rightChannel[i];
-            rightOutput[i] = rightChannel[i] - leftChannel[i];
-          }
-        } else {
-          // Se for mono, apenas copiar o áudio original
-          const monoChannel = this.audioBuffer.getChannelData(0);
-          const monoOutput = processedBuffer.getChannelData(0);
-          monoChannel.forEach((sample, i) => {
-            monoOutput[i] = sample;
-          });
-        }
-      } else {
-        // Se não houver remoção de voz, apenas copiar o áudio original
-        for (let channel = 0; channel < this.audioBuffer.numberOfChannels; channel++) {
-          const channelData = this.audioBuffer.getChannelData(channel);
-          const outputData = processedBuffer.getChannelData(channel);
-          channelData.forEach((sample, i) => {
-            outputData[i] = sample;
-          });
-        }
-      }
-
-      // Aplicar ajuste de pitch e tempo se necessário
-      if (options.pitchShift !== 0 || options.tempo !== 100) {
-        // Criar um buffer temporário para o PitchShifter
-        const tempBuffer = this.audioContext.createBuffer(
-          processedBuffer.numberOfChannels,
-          processedBuffer.length,
-          processedBuffer.sampleRate
-        );
-
-        // Copiar os dados do buffer processado para o temporário
-        for (let channel = 0; channel < processedBuffer.numberOfChannels; channel++) {
-          const processedData = processedBuffer.getChannelData(channel);
-          const tempData = tempBuffer.getChannelData(channel);
-          processedData.forEach((sample, i) => {
-            tempData[i] = sample;
-          });
-        }
-
-        // Usar o PitchShifter para ajustar o pitch e o tempo
-        this.pitchShifter = new PitchShifter(this.audioContext, tempBuffer, 4096);
-        this.pitchShifter.pitch = Math.pow(2, options.pitchShift / 12); // Converter semitons para multiplicador
-        this.pitchShifter.tempo = options.tempo / 100; // Converter de porcentagem para multiplicador
-
-        // Processar o áudio com o PitchShifter
-        // Nota: Isso retorna um nó de áudio, não um buffer
-        // Para obter um buffer, precisaríamos renderizar o áudio offline
-        return tempBuffer; // Retornamos o buffer original por enquanto
-      }
-
+      // Aplicar remoção de voz
+      const processedBuffer = await this.removeVocalsFromBuffer(audioBuffer);
+      
       this.isProcessing = false;
       return processedBuffer;
     } catch (error) {
-      console.error('KaraokeService: Erro ao processar áudio:', error);
+      console.error('KaraokeService: Erro ao processar arquivo de áudio:', error);
       this.isProcessing = false;
       return null;
     }
+  }
+
+  // Lê um arquivo como ArrayBuffer
+  private readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = () => {
+        resolve(reader.result as ArrayBuffer);
+      };
+      
+      reader.onerror = (error) => {
+        reject(error);
+      };
+      
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Remove vocais de um AudioBuffer
+  private async removeVocalsFromBuffer(buffer: AudioBuffer): Promise<AudioBuffer> {
+    if (!this.audioContext) {
+      throw new Error('AudioContext não inicializado');
+    }
+
+    // Verificar se o buffer tem pelo menos dois canais (estéreo)
+    if (buffer.numberOfChannels < 2) {
+      console.warn('KaraokeService: O arquivo de áudio não é estéreo, não é possível remover vocais');
+      return buffer;
+    }
+
+    // Criar um novo buffer para armazenar o resultado
+    const processedBuffer = this.audioContext.createBuffer(
+      buffer.numberOfChannels,
+      buffer.length,
+      buffer.sampleRate
+    );
+
+    // Obter os dados dos canais
+    const leftChannel = buffer.getChannelData(0);
+    const rightChannel = buffer.getChannelData(1);
+    
+    // Criar arrays para os canais processados
+    const processedLeftChannel = new Float32Array(buffer.length);
+    const processedRightChannel = new Float32Array(buffer.length);
+
+    // Aplicar técnica de cancelamento de fase
+    for (let i = 0; i < buffer.length; i++) {
+      // A voz geralmente está no centro da mixagem (igual nos dois canais)
+      // Subtrair um canal do outro cancela o conteúdo central (voz)
+      processedLeftChannel[i] = leftChannel[i] - rightChannel[i];
+      processedRightChannel[i] = rightChannel[i] - leftChannel[i];
+    }
+
+    // Copiar os dados processados para o novo buffer
+    processedBuffer.copyToChannel(processedLeftChannel, 0);
+    processedBuffer.copyToChannel(processedRightChannel, 1);
+
+    return processedBuffer;
   }
 
   // Aplica remoção de voz em tempo real para um nó de áudio existente
@@ -166,34 +205,77 @@ class KaraokeService {
     }
 
     try {
-      // Criar nós para processamento
-      this.splitterNode = this.audioContext.createChannelSplitter(2);
-      this.mergerNode = this.audioContext.createChannelMerger(2);
-      this.leftGainNode = this.audioContext.createGain();
-      this.rightGainNode = this.audioContext.createGain();
-      this.invertNode = this.audioContext.createGain();
-      this.invertNode.gain.value = -1; // Inverter a fase
+      // Limpar qualquer nó de processamento anterior
+      if (this.vocalRemoverNode) {
+        this.vocalRemoverNode.disconnect();
+        this.vocalRemoverNode = null;
+      }
+      
+      if (this.vocalRemover) {
+        this.vocalRemover.disconnect();
+        this.vocalRemover = null;
+      }
+      
+      // Verificar se o script de remoção de vocais foi carregado
+      if (this.scriptLoaded && window.VocalRemover) {
+        console.log('KaraokeService: Usando VocalRemover para remoção de vocais');
+        
+        // Criar uma nova instância do VocalRemover
+        this.vocalRemover = new window.VocalRemover(this.audioContext);
+        
+        // Conectar o nó de origem ao processador
+        const outputNode = this.vocalRemover.connect(sourceNode);
+        
+        // Definir a intensidade da remoção
+        this.vocalRemover.setIntensity(1.0);
+        
+        // Retornar o nó de saída
+        return outputNode;
+      }
+      // Verificar se o AudioWorklet foi carregado
+      else if (this.workletLoaded) {
+        console.log('KaraokeService: Usando AudioWorklet para remoção de vocais');
+        
+        // Criar um novo nó de processamento usando o AudioWorklet
+        this.vocalRemoverNode = new AudioWorkletNode(this.audioContext, 'vocal-remover-processor');
+        
+        // Conectar o nó de origem ao processador e o processador à saída
+        sourceNode.connect(this.vocalRemoverNode);
+        
+        // Retornar o nó do processador para que possa ser conectado à saída
+        return this.vocalRemoverNode;
+      } else {
+        console.log('KaraokeService: Usando método alternativo para remoção de vocais');
+        
+        // Método alternativo usando nós de áudio padrão
+        this.splitterNode = this.audioContext.createChannelSplitter(2);
+        this.mergerNode = this.audioContext.createChannelMerger(2);
+        this.leftGainNode = this.audioContext.createGain();
+        this.rightGainNode = this.audioContext.createGain();
+        this.invertNode = this.audioContext.createGain();
+        this.invertNode.gain.value = -1; // Inverter a fase
 
-      // Conectar os nós para implementar o cancelamento de fase
-      sourceNode.connect(this.splitterNode);
-      
-      // Canal esquerdo
-      this.splitterNode.connect(this.leftGainNode, 0);
-      
-      // Canal direito
-      this.splitterNode.connect(this.invertNode, 1);
-      this.invertNode.connect(this.leftGainNode);
-      
-      // Mesma configuração para o canal direito, mas invertendo o esquerdo
-      this.splitterNode.connect(this.rightGainNode, 1);
-      this.splitterNode.connect(this.invertNode, 0);
-      this.invertNode.connect(this.rightGainNode);
-      
-      // Reconectar os canais processados
-      this.leftGainNode.connect(this.mergerNode, 0, 0);
-      this.rightGainNode.connect(this.mergerNode, 0, 1);
+        // Conectar os nós para implementar o cancelamento de fase
+        sourceNode.connect(this.splitterNode);
+        
+        // Canal esquerdo
+        this.splitterNode.connect(this.leftGainNode, 0);
+        
+        // Canal direito
+        this.splitterNode.connect(this.invertNode, 1);
+        this.invertNode.connect(this.leftGainNode);
+        
+        // Mesma configuração para o canal direito, mas invertendo o esquerdo
+        this.splitterNode.connect(this.rightGainNode, 1);
+        this.splitterNode.connect(this.invertNode, 0);
+        this.invertNode.connect(this.rightGainNode);
+        
+        // Reconectar os canais processados
+        this.leftGainNode.connect(this.mergerNode, 0, 0);
+        this.rightGainNode.connect(this.mergerNode, 0, 1);
 
-      return this.mergerNode;
+        return this.mergerNode;
+      }
     } catch (error) {
       console.error('KaraokeService: Erro ao aplicar remoção de voz:', error);
       return sourceNode;
@@ -208,20 +290,94 @@ class KaraokeService {
     }
 
     try {
-      // Usar Tone.js para criar um efeito de pitch shift
-      const pitchShift = new Tone.PitchShift(semitones).toDestination();
+      // Criar um processador de pitch shift usando Tone.js
+      const pitchShift = new Tone.PitchShift(semitones);
       
       // Conectar o nó de origem ao efeito de pitch shift
-      // Nota: Isso requer conversão entre Web Audio API e Tone.js
+      // Converter entre Web Audio API e Tone.js
+      const toneContext = Tone.getContext();
       const toneSource = new Tone.UserMedia();
+      
+      // Conectar o nó de origem ao efeito
+      sourceNode.connect(pitchShift.context.rawContext.destination);
       toneSource.connect(pitchShift);
       
       // Retornar o nó de saída do efeito
-      return pitchShift.context._context.destination;
+      return pitchShift.context.rawContext.destination;
     } catch (error) {
       console.error('KaraokeService: Erro ao aplicar ajuste de pitch:', error);
       return sourceNode;
     }
+  }
+
+  // Reproduz um AudioBuffer
+  playAudioBuffer(buffer: AudioBuffer) {
+    if (!this.audioContext) {
+      console.error('KaraokeService: AudioContext não inicializado');
+      return;
+    }
+
+    // Limpar recursos anteriores
+    this.clearResources();
+
+    // Criar um novo nó de fonte
+    this.sourceNode = this.audioContext.createBufferSource();
+    this.sourceNode.buffer = buffer;
+
+    // Criar um nó de ganho para controle de volume
+    this.gainNode = this.audioContext.createGain();
+    this.gainNode.gain.value = 1.0;
+
+    // Conectar os nós
+    this.sourceNode.connect(this.gainNode);
+    this.gainNode.connect(this.audioContext.destination);
+
+    // Iniciar a reprodução
+    this.sourceNode.start();
+  }
+
+  // Pausa a reprodução
+  pausePlayback() {
+    if (this.audioContext && this.audioContext.state === 'running') {
+      this.audioContext.suspend();
+    }
+  }
+
+  // Retoma a reprodução
+  resumePlayback() {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+  }
+
+  // Para a reprodução
+  stopPlayback() {
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.stop();
+      } catch (error) {
+        console.error('KaraokeService: Erro ao parar reprodução:', error);
+      }
+    }
+    this.clearResources();
+  }
+
+  // Cria um analisador de áudio para visualização
+  createAnalyser(): AnalyserNode | null {
+    if (!this.audioContext) {
+      console.error('KaraokeService: AudioContext não inicializado');
+      return null;
+    }
+
+    this.analyserNode = this.audioContext.createAnalyser();
+    this.analyserNode.fftSize = 2048;
+    this.analyserNode.smoothingTimeConstant = 0.8;
+
+    if (this.gainNode) {
+      this.gainNode.connect(this.analyserNode);
+    }
+
+    return this.analyserNode;
   }
 
   // Limpa todos os recursos
@@ -259,6 +415,14 @@ class KaraokeService {
         this.analyserNode.disconnect();
         this.analyserNode = null;
       }
+      if (this.vocalRemoverNode) {
+        this.vocalRemoverNode.disconnect();
+        this.vocalRemoverNode = null;
+      }
+      if (this.vocalRemover) {
+        this.vocalRemover.disconnect();
+        this.vocalRemover = null;
+      }
       if (this.pitchShifter) {
         this.pitchShifter = null;
       }
@@ -269,18 +433,9 @@ class KaraokeService {
     }
   }
 
-  // Retorna um analisador para visualização de áudio
-  getAnalyser(): AnalyserNode | null {
-    if (!this.audioContext) {
-      return null;
-    }
-
-    if (!this.analyserNode) {
-      this.analyserNode = this.audioContext.createAnalyser();
-      this.analyserNode.fftSize = 2048;
-    }
-
-    return this.analyserNode;
+  // Getter para o AudioContext
+  getAudioContext(): AudioContext | null {
+    return this.audioContext;
   }
 }
 
