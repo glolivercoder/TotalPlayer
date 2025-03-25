@@ -47,27 +47,54 @@ const isVideoFile = (filename: string): boolean => {
   return SUPPORTED_VIDEO_FORMATS.includes(extension);
 };
 
+// Detecta se o dispositivo é móvel
+const isMobileDevice = (): boolean => {
+  try {
+    console.log('DEBUG: Verificando se é dispositivo móvel');
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+    console.log('DEBUG: É dispositivo móvel:', isMobile);
+    return isMobile;
+  } catch (error) {
+    console.error('DEBUG: Erro ao verificar se é dispositivo móvel:', error);
+    return false;
+  }
+};
+
 // Verifica se a API File System Access está disponível
 const isFileSystemAccessSupported = (): boolean => {
   try {
-    return typeof window !== 'undefined' && 
+    console.log('DEBUG: Verificando suporte à API File System Access');
+    const isSupported = typeof window !== 'undefined' && 
            'showOpenFilePicker' in window && 
            'showDirectoryPicker' in window;
+    console.log('DEBUG: API File System Access suportada:', isSupported);
+    
+    // Em dispositivos móveis, mesmo que a API esteja disponível, pode não funcionar corretamente
+    // Então, vamos usar o fallback para dispositivos móveis
+    if (isSupported && isMobileDevice()) {
+      console.log('DEBUG: Dispositivo móvel detectado, usando fallback mesmo com API suportada');
+      return false;
+    }
+    
+    return isSupported;
   } catch (error) {
-    console.error('Erro ao verificar suporte à API File System Access:', error);
+    console.error('DEBUG: Erro ao verificar suporte à API File System Access:', error);
     return false;
   }
 };
 
 // Open file picker to select a media file
 const openMediaFilePicker = async (): Promise<Track | null> => {
+  console.log('DEBUG: Iniciando openMediaFilePicker');
   try {
     // Verificar se a API é suportada
     if (!isFileSystemAccessSupported()) {
-      console.error('File System Access API não é suportada neste navegador');
+      console.log('DEBUG: File System Access API não é suportada, usando fallback');
       return await openMediaFileWithInput(); // Fallback para input file
     }
 
+    console.log('DEBUG: Configurando tipos de arquivos aceitos');
     // Configuração para tipos de arquivos aceitos
     const fileTypes: Record<string, string[]> = {};
     
@@ -92,40 +119,63 @@ const openMediaFilePicker = async (): Promise<Track | null> => {
       fileTypes['application/octet-stream'] = SUPPORTED_KARAOKE_FORMATS;
     }
 
+    console.log('DEBUG: Chamando showOpenFilePicker');
     // Open file picker and get the file handle
-    const [fileHandle] = await window.showOpenFilePicker({
-      types: [
-        {
-          description: 'Arquivos de Mídia',
-          accept: fileTypes
-        }
-      ],
-      multiple: false
-    });
-    
-    // Get the file
-    const file = await fileHandle.getFile();
-    const isKaraoke = isKaraokeFile(file.name);
-    const isVideo = isVideoFile(file.name);
-    
-    // Create a URL for the file
-    const url = URL.createObjectURL(file);
-    
-    // Create a track object
-    const track: Track = {
-      id: uuidv4(),
-      title: file.name.split('.').slice(0, -1).join('.') || file.name,
-      artist: 'Unknown Artist',
-      path: url,
-      format: file.name.split('.').pop()?.toLowerCase() || '',
-      isKaraoke,
-      isVideo,
-      fileHandle
-    };
-    
-    return track;
+    try {
+      const [fileHandle] = await window.showOpenFilePicker({
+        types: [
+          {
+            description: 'Arquivos de Mídia',
+            accept: fileTypes
+          }
+        ],
+        multiple: false
+      });
+      
+      console.log('DEBUG: File handle obtido com sucesso');
+      
+      // Get the file
+      console.log('DEBUG: Obtendo arquivo do file handle');
+      const file = await fileHandle.getFile();
+      console.log('DEBUG: Arquivo obtido:', file.name);
+      
+      const isKaraoke = isKaraokeFile(file.name);
+      const isVideo = isVideoFile(file.name);
+      
+      // Create a URL for the file
+      console.log('DEBUG: Criando URL para o arquivo');
+      const url = URL.createObjectURL(file);
+      
+      // Create a track object
+      const track: Track = {
+        id: uuidv4(),
+        title: file.name.split('.').slice(0, -1).join('.') || file.name,
+        artist: 'Unknown Artist',
+        path: url,
+        format: file.name.split('.').pop()?.toLowerCase() || '',
+        isKaraoke,
+        isVideo,
+        fileHandle
+      };
+      
+      console.log('DEBUG: Track criado com sucesso:', track);
+      return track;
+    } catch (pickerError) {
+      console.error('DEBUG: Erro específico ao usar showOpenFilePicker:', pickerError);
+      // Se o erro for de cancelamento pelo usuário, não mostrar toast
+      if (pickerError.name !== 'AbortError') {
+        toast({
+          title: 'Erro',
+          description: 'Falha ao abrir seletor de arquivos',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('DEBUG: Usuário cancelou a seleção de arquivo');
+      }
+      return null;
+    }
   } catch (error) {
-    console.error('Erro ao abrir arquivo de mídia:', error);
+    console.error('DEBUG: Erro geral ao abrir arquivo de mídia:', error);
     toast({
       title: 'Erro',
       description: 'Falha ao abrir arquivo de mídia',
@@ -137,18 +187,36 @@ const openMediaFilePicker = async (): Promise<Track | null> => {
 
 // Open directory picker to select a media folder
 const openMediaFolderPicker = async (): Promise<FileSystemDirectoryHandle | null> => {
+  console.log('DEBUG: Iniciando openMediaFolderPicker');
   try {
     // Verificar se a API é suportada
     if (!isFileSystemAccessSupported()) {
-      console.error('File System Access API não é suportada neste navegador');
+      console.error('DEBUG: File System Access API não é suportada neste navegador');
       throw new Error('File System Access API não é suportada neste navegador');
     }
 
+    console.log('DEBUG: Chamando showDirectoryPicker');
     // Open directory picker
-    const directoryHandle = await window.showDirectoryPicker();
-    return directoryHandle;
+    try {
+      const directoryHandle = await window.showDirectoryPicker();
+      console.log('DEBUG: Directory handle obtido com sucesso');
+      return directoryHandle;
+    } catch (pickerError) {
+      console.error('DEBUG: Erro específico ao usar showDirectoryPicker:', pickerError);
+      // Se o erro for de cancelamento pelo usuário, não mostrar toast
+      if (pickerError.name !== 'AbortError') {
+        toast({
+          title: 'Erro',
+          description: 'Falha ao abrir seletor de pastas',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('DEBUG: Usuário cancelou a seleção de pasta');
+      }
+      return null;
+    }
   } catch (error) {
-    console.error('Erro ao abrir pasta de mídia:', error);
+    console.error('DEBUG: Erro geral ao abrir pasta de mídia:', error);
     toast({
       title: 'Erro',
       description: 'Falha ao abrir pasta de mídia',
@@ -229,34 +297,41 @@ const scanDirectoryForMedia = async (directoryHandle: FileSystemDirectoryHandle)
     // Function to recursively scan a directory
     const scanDirectory = async (dirHandle: FileSystemDirectoryHandle, path: string = '') => {
       try {
-        for await (const [name, handle] of dirHandle.values()) {
-          if (handle.kind === 'directory') {
-            // Recursively scan subdirectories
-            await scanDirectory(handle as FileSystemDirectoryHandle, `${path}${name}/`);
-          } else if (handle.kind === 'file' && isSupportedMediaFile(name)) {
-            // Process media file
-            const fileHandle = handle as FileSystemFileHandle;
-            const file = await fileHandle.getFile();
-            const isKaraoke = isKaraokeFile(file.name);
-            const isVideo = isVideoFile(file.name);
-            
-            // Create a URL for the file
-            const url = URL.createObjectURL(file);
-            
-            // Create a track object
-            const track: Track = {
-              id: uuidv4(),
-              title: file.name.split('.').slice(0, -1).join('.') || file.name,
-              artist: 'Unknown Artist',
-              album: path.split('/').filter(Boolean).pop() || 'Unknown Album',
-              path: url,
-              format: file.name.split('.').pop()?.toLowerCase() || '',
-              isKaraoke,
-              isVideo,
-              fileHandle
-            };
-            
-            tracks.push(track);
+        for await (const entry of dirHandle.values()) {
+          try {
+            const [name, handle] = entry;
+            if (handle.kind === 'directory') {
+              // Recursively scan subdirectories
+              await scanDirectory(handle as FileSystemDirectoryHandle, `${path}${name}/`);
+            } else if (handle.kind === 'file' && isSupportedMediaFile(name)) {
+              // Process media file
+              const fileHandle = handle as FileSystemFileHandle;
+              const file = await fileHandle.getFile();
+              const isKaraoke = isKaraokeFile(file.name);
+              const isVideo = isVideoFile(file.name);
+              
+              // Create a URL for the file
+              const url = URL.createObjectURL(file);
+              
+              // Create a track object
+              const track: Track = {
+                id: uuidv4(),
+                title: file.name.split('.').slice(0, -1).join('.') || file.name,
+                artist: 'Unknown Artist',
+                album: path.split('/').filter(Boolean).pop() || 'Unknown Album',
+                path: url,
+                format: file.name.split('.').pop()?.toLowerCase() || '',
+                isKaraoke,
+                isVideo,
+                fileHandle
+              };
+              
+              tracks.push(track);
+            }
+          } catch (entryError) {
+            console.error(`Erro ao processar arquivo ou diretório:`, entryError);
+            // Continue com o próximo arquivo/diretório
+            continue;
           }
         }
       } catch (error) {
@@ -279,9 +354,11 @@ const scanDirectoryForMedia = async (directoryHandle: FileSystemDirectoryHandle)
 
 // Fallback para navegadores que não suportam a API File System Access
 const openMediaFileWithInput = (): Promise<Track | null> => {
+  console.log('DEBUG: Iniciando openMediaFileWithInput (fallback)');
   return new Promise((resolve) => {
     try {
       // Criar um elemento de input temporário
+      console.log('DEBUG: Criando input temporário');
       const input = document.createElement('input');
       input.type = 'file';
       
@@ -292,26 +369,28 @@ const openMediaFileWithInput = (): Promise<Track | null> => {
         ...SUPPORTED_KARAOKE_FORMATS
       ].join(',');
       
+      console.log('DEBUG: Tipos aceitos:', acceptedTypes);
       input.accept = acceptedTypes;
       
       // Manipular o evento de alteração (quando o usuário seleciona um arquivo)
       input.onchange = async (event) => {
         try {
+          console.log('DEBUG: Evento onchange acionado');
           const target = event.target as HTMLInputElement;
           const files = target.files;
           
           if (!files || files.length === 0) {
-            console.log('Nenhum arquivo selecionado');
+            console.log('DEBUG: Nenhum arquivo selecionado');
             resolve(null);
             return;
           }
           
           const file = files[0];
-          console.log('Arquivo selecionado:', file.name);
+          console.log('DEBUG: Arquivo selecionado:', file.name);
           
           // Verificar se é um arquivo de mídia suportado
           if (!isSupportedMediaFile(file.name)) {
-            console.error('Formato de arquivo não suportado:', file.name);
+            console.error('DEBUG: Formato de arquivo não suportado:', file.name);
             toast({
               title: 'Formato não suportado',
               description: 'O arquivo selecionado não é um formato de mídia suportado',
@@ -325,7 +404,9 @@ const openMediaFileWithInput = (): Promise<Track | null> => {
           const isVideo = isVideoFile(file.name);
           
           // Criar uma URL para o arquivo
+          console.log('DEBUG: Criando URL para o arquivo');
           const url = URL.createObjectURL(file);
+          console.log('DEBUG: URL criada:', url);
           
           // Criar um objeto de faixa
           const track: Track = {
@@ -338,9 +419,10 @@ const openMediaFileWithInput = (): Promise<Track | null> => {
             isVideo
           };
           
+          console.log('DEBUG: Track criado com sucesso:', track);
           resolve(track);
         } catch (error) {
-          console.error('Erro ao processar arquivo selecionado:', error);
+          console.error('DEBUG: Erro ao processar arquivo selecionado:', error);
           toast({
             title: 'Erro',
             description: 'Falha ao processar o arquivo selecionado',
@@ -352,7 +434,7 @@ const openMediaFileWithInput = (): Promise<Track | null> => {
       
       // Manipular erros
       input.onerror = (error) => {
-        console.error('Erro ao selecionar arquivo:', error);
+        console.error('DEBUG: Erro ao selecionar arquivo:', error);
         toast({
           title: 'Erro',
           description: 'Falha ao selecionar arquivo',
@@ -362,9 +444,16 @@ const openMediaFileWithInput = (): Promise<Track | null> => {
       };
       
       // Simular um clique no input para abrir o seletor de arquivos
+      console.log('DEBUG: Simulando clique no input');
+      // Adicionar temporariamente ao DOM para garantir compatibilidade em todos os navegadores
+      document.body.appendChild(input);
       input.click();
+      // Remover após o clique para não poluir o DOM
+      setTimeout(() => {
+        document.body.removeChild(input);
+      }, 100);
     } catch (error) {
-      console.error('Erro ao criar input de arquivo:', error);
+      console.error('DEBUG: Erro ao criar input de arquivo:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao abrir seletor de arquivos',
@@ -383,6 +472,7 @@ export {
   isKaraokeFile,
   isVideoFile,
   isFileSystemAccessSupported,
+  isMobileDevice,
   openMediaFileWithInput,
   saveFolderHandle,
   SUPPORTED_AUDIO_FORMATS,

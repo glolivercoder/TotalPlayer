@@ -279,6 +279,61 @@ export class YouTubeAudioService {
     }
   }
 
+  // Definir o ID do vídeo do YouTube
+  async setVideoId(videoId: string, isVideo: boolean = false): Promise<void> {
+    console.log('DEBUG: Configurando vídeo do YouTube:', videoId, isVideo ? '(vídeo)' : '(áudio)');
+    try {
+      // Verificar se o serviço foi inicializado
+      if (!this.initialized) {
+        console.log('DEBUG: Inicializando serviço de áudio do YouTube...');
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error('Não foi possível inicializar o serviço de áudio do YouTube');
+        }
+      }
+      
+      // Limpar qualquer player existente para este vídeo
+      this.removePlayer(videoId);
+      
+      // Criar um novo player para o vídeo
+      if (isVideo) {
+        console.log('DEBUG: Configurando para reprodução de vídeo completo');
+        // Para vídeos, apenas configuramos o ID e deixamos o player principal lidar com isso
+        toast({
+          title: 'Vídeo configurado',
+          description: 'O vídeo do YouTube foi configurado e está pronto para ser reproduzido.',
+        });
+      } else {
+        console.log('DEBUG: Configurando para extração de áudio');
+        // Para áudio, criamos um player oculto
+        await this.createAudioPlayer(videoId, {
+          onReady: () => {
+            console.log('DEBUG: Player de áudio do YouTube pronto');
+            toast({
+              title: 'Áudio configurado',
+              description: 'O áudio do YouTube foi configurado e está pronto para ser reproduzido.',
+            });
+          },
+          onError: (error) => {
+            console.error('DEBUG: Erro ao configurar player de áudio do YouTube:', error);
+            toast({
+              title: 'Erro ao configurar áudio',
+              description: 'Não foi possível configurar o áudio deste vídeo do YouTube.',
+              variant: 'destructive',
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('DEBUG: Erro ao configurar vídeo do YouTube:', error);
+      toast({
+        title: 'Erro ao configurar vídeo',
+        description: 'Não foi possível configurar o vídeo do YouTube.',
+        variant: 'destructive',
+      });
+    }
+  }
+
   // Reproduzir áudio de um vídeo do YouTube
   playAudio(videoId: string, volume: number = 1.0): void {
     try {

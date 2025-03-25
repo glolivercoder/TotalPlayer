@@ -13,6 +13,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { toast } from '@/components/ui/use-toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const KaraokePage = () => {
   // Use the audio player state and methods
@@ -125,12 +133,11 @@ const KaraokePage = () => {
 
   // Voice type options
   const voiceTypes = [
-    { id: 'male', name: 'Voz Masculina' },
-    { id: 'female', name: 'Voz Feminina' },
-    { id: 'tenor', name: 'Tenor' },
-    { id: 'baritone', name: 'Barítono' },
+    { id: 'normal', name: 'Normal' },
     { id: 'soprano', name: 'Soprano' },
-    { id: 'normal', name: 'Normal' }
+    { id: 'mezzo', name: 'Mezzo-Soprano' },
+    { id: 'tenor', name: 'Tenor' },
+    { id: 'baritone', name: 'Barítono' }
   ];
 
   return (
@@ -218,20 +225,81 @@ const KaraokePage = () => {
               </label>
               <div className="ml-auto font-medium">{pitchShift}</div>
             </div>
-            <Slider 
-              defaultValue={[0]} 
-              min={-12} 
-              max={12} 
-              step={1} 
-              value={[pitchShift]}
-              onValueChange={(value) => setPitchShift(value[0])}
-              disabled={!currentTrack}
-              className="my-4"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>-12</span>
-              <span>0</span>
-              <span>+12</span>
+            
+            <div className="space-y-4">
+              <div className="flex flex-col space-y-2">
+                <div className="flex justify-between">
+                  <label className="text-sm">Tom (semitons):</label>
+                  <span className="text-sm font-medium">{pitchShift}</span>
+                </div>
+                <Slider 
+                  defaultValue={[0]} 
+                  min={-12} 
+                  max={12} 
+                  step={1} 
+                  value={[pitchShift]}
+                  onValueChange={(value) => setPitchShift(value[0])}
+                  disabled={!currentTrack}
+                  className="my-2"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>-12</span>
+                  <span>0</span>
+                  <span>+12</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm">Tipo de Voz:</label>
+                <ErrorBoundary fallback={<div className="p-2 border border-destructive rounded-md">Erro ao carregar o seletor de voz</div>}>
+                  <Select 
+                    value={voiceType} 
+                    onValueChange={setVoiceType}
+                    disabled={!currentTrack}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de voz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voiceTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </ErrorBoundary>
+              </div>
+              
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm">Ajuste de Gênero:</label>
+                <ErrorBoundary fallback={<div className="p-2 border border-destructive rounded-md">Erro ao carregar o ajuste de gênero</div>}>
+                  <Select 
+                    defaultValue="0"
+                    onValueChange={(value) => {
+                      // Aplicar ajuste de gênero mantendo o tipo de voz
+                      const genderValue = parseInt(value);
+                      const voicePresets = {
+                        'soprano': 4,
+                        'mezzo': 2,
+                        'tenor': -4,
+                        'baritone': -6,
+                        'normal': 0
+                      };
+                      const baseValue = voicePresets[voiceType as keyof typeof voicePresets] || 0;
+                      setPitchShift(baseValue + genderValue);
+                    }}
+                    disabled={!currentTrack}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o ajuste de gênero" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem key="neutral" value="0">Neutro</SelectItem>
+                      <SelectItem key="female" value="5">Feminino (+5)</SelectItem>
+                      <SelectItem key="male" value="-5">Masculino (-5)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </ErrorBoundary>
+              </div>
             </div>
           </div>
           

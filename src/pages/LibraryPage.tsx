@@ -97,20 +97,17 @@ const LibraryPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchType, setSearchType] = useState<'all' | 'local' | 'stream' | 'youtube'>('all');
+  const [searchType, setSearchType] = useState<'all' | 'local' | 'youtube'>('all');
   const [youtubeContentType, setYoutubeContentType] = useState<'music' | 'video'>('music');
   
   // Estado para controlar as músicas locais
   const [localTracks, setLocalTracks] = useState<LocalTrack[]>([]);
   
-  // Estado para controlar as músicas em streaming
-  const [streamTracks, setStreamTracks] = useState<StreamTrack[]>(SAMPLE_STREAM_TRACKS);
-  
   // Estado para controlar as músicas do YouTube
   const [youtubeTracks, setYoutubeTracks] = useState<YouTubeTrack[]>([]);
   
   // Estado para controlar a aba atual
-  const [activeTab, setActiveTab] = useState('stream');
+  const [activeTab, setActiveTab] = useState('local');
 
   // Carregar músicas populares do YouTube Music quando a aba for selecionada
   useEffect(() => {
@@ -207,31 +204,6 @@ const LibraryPage = () => {
     );
   };
 
-  // Função para buscar músicas em streaming usando a API Subsonic
-  const searchStreamTracks = async (query: string): Promise<StreamTrack[]> => {
-    if (!query) return [];
-    
-    try {
-      // Filtrando as músicas de streaming de exemplo com base na consulta
-      const normalizedQuery = query.toLowerCase();
-      const filteredTracks = SAMPLE_STREAM_TRACKS.filter(track => 
-        track.title.toLowerCase().includes(normalizedQuery) ||
-        track.artist.toLowerCase().includes(normalizedQuery) ||
-        (track.album && track.album.toLowerCase().includes(normalizedQuery))
-      );
-      
-      return filteredTracks;
-    } catch (error) {
-      console.error('Erro ao buscar músicas em streaming:', error);
-      toast({
-        title: 'Erro na busca',
-        description: 'Não foi possível buscar músicas em streaming. Tente novamente mais tarde.',
-        variant: 'destructive'
-      });
-      return [];
-    }
-  };
-
   // Função para buscar músicas no YouTube Music
   const searchYoutubeTracks = async (query: string): Promise<YouTubeTrack[]> => {
     if (!query) return [];
@@ -282,16 +254,32 @@ const LibraryPage = () => {
         results = [...results, ...localResults];
       }
       
-      // Buscar em streaming se necessário
-      if (searchType === 'all' || searchType === 'stream') {
-        const streamResults = await searchStreamTracks(searchQuery);
-        results = [...results, ...streamResults];
-      }
-      
       // Buscar no YouTube se necessário
       if (searchType === 'all' || searchType === 'youtube') {
         const youtubeResults = await searchYoutubeTracks(searchQuery);
         results = [...results, ...youtubeResults];
+        
+        // Se a busca for especificamente para YouTube, atualizar a aba do YouTube
+        if (searchType === 'youtube') {
+          setYoutubeTracks(youtubeResults);
+          setActiveTab('youtube');
+          
+          if (youtubeResults.length === 0) {
+            toast({
+              title: 'Nenhum resultado',
+              description: `Nenhum conteúdo encontrado para "${searchQuery}" no YouTube`,
+              variant: 'default'
+            });
+          } else {
+            toast({
+              title: 'Busca concluída',
+              description: `${youtubeResults.length} resultados encontrados no YouTube`,
+              variant: 'default'
+            });
+          }
+          setIsSearching(false);
+          return;
+        }
       }
       
       // Atualizar resultados e mudar para a aba de resultados
@@ -461,69 +449,6 @@ const LibraryPage = () => {
     }
   };
 
-  // Função para baixar uma música de streaming
-  const downloadStreamTrack = async (track: StreamTrack) => {
-    try {
-      // Em uma implementação real, você faria o download do arquivo
-      toast({
-        title: 'Download iniciado',
-        description: `Baixando "${track.title}" de ${track.artist}`,
-        variant: 'default'
-      });
-      
-      console.log('Iniciando download da faixa:', track);
-      
-      // Simular o download concluído após 2 segundos
-      setTimeout(() => {
-        try {
-          // Adicionar a biblioteca local após o download
-          const downloadedTrack: LocalTrack = {
-            id: `local-${Date.now()}`,
-            title: track.title,
-            artist: track.artist,
-            album: track.album,
-            albumArt: track.albumArt,
-            path: track.streamUrl, // Usar a URL de streaming diretamente
-            source: 'local'
-          };
-          
-          console.log('Faixa baixada com sucesso:', downloadedTrack);
-          
-          const updatedTracks = [...localTracks, downloadedTrack];
-          setLocalTracks(updatedTracks);
-          
-          // Salvar no localStorage
-          localStorage.setItem('localTracks', JSON.stringify(updatedTracks));
-          
-          toast({
-            title: 'Download concluído',
-            description: `"${track.title}" foi adicionada a sua biblioteca`,
-            variant: 'default'
-          });
-          
-          // Atualizar a aba de biblioteca local
-          if (document.querySelector('[value="local"]')) {
-            (document.querySelector('[value="local"]') as HTMLElement).click();
-          }
-        } catch (error) {
-          console.error('Erro ao finalizar download:', error);
-          toast({
-            title: 'Erro no download',
-            description: 'Não foi possível concluir o download',
-            variant: 'destructive'
-          });
-        }
-      }, 2000);
-    } catch (error) {
-      console.error('Erro ao baixar música:', error);
-      toast({
-        title: 'Erro no download',
-        description: 'Não foi possível iniciar o download',
-        variant: 'destructive'
-      });
-    }
-  };
-
   return (
     <div className="container py-4 space-y-6 overflow-y-auto pb-32">
       <h1 className="text-2xl font-bold">Biblioteca</h1>
@@ -554,7 +479,7 @@ const LibraryPage = () => {
         
         <Select 
           value={searchType} 
-          onValueChange={(value) => setSearchType(value as 'all' | 'local' | 'stream' | 'youtube')}
+          onValueChange={(value) => setSearchType(value as 'all' | 'local' | 'youtube')}
         >
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Tipo de busca" />
@@ -562,7 +487,6 @@ const LibraryPage = () => {
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="local">Local</SelectItem>
-            <SelectItem value="stream">Streaming</SelectItem>
             <SelectItem value="youtube">YouTube</SelectItem>
           </SelectContent>
         </Select>
@@ -602,10 +526,9 @@ const LibraryPage = () => {
       </div>
       
       {/* Tabs para diferentes seções */}
-      <Tabs defaultValue="stream" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="local" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="search">Resultados</TabsTrigger>
-          <TabsTrigger value="stream">Streaming</TabsTrigger>
           <TabsTrigger value="youtube">YouTube Music</TabsTrigger>
           <TabsTrigger value="local">Biblioteca Local</TabsTrigger>
         </TabsList>
@@ -625,11 +548,6 @@ const LibraryPage = () => {
                           size="sm"
                           isPlaying={isPlaying && currentTrack?.id === track.id}
                         />
-                        {'source' in track && track.source === 'stream' && (
-                          <div className="absolute top-0 right-0 bg-blue-500 rounded-full p-1">
-                            <Globe className="h-3 w-3 text-white" />
-                          </div>
-                        )}
                         {'source' in track && track.source === 'youtube' && (
                           <div className="absolute top-0 right-0 bg-red-500 rounded-full p-1">
                             <Youtube className="h-3 w-3 text-white" />
@@ -653,18 +571,6 @@ const LibraryPage = () => {
                         >
                           <Play className="h-5 w-5" />
                         </Button>
-                        
-                        {'source' in track && track.source === 'stream' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => downloadStreamTrack(track as StreamTrack)}
-                            aria-label="Baixar"
-                            className="text-blue-500 hover:text-blue-700"
-                          >
-                            <Download className="h-5 w-5" />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -682,106 +588,6 @@ const LibraryPage = () => {
               </p>
             </div>
           )}
-        </TabsContent>
-        
-        {/* Seção de streaming */}
-        <TabsContent value="stream" className="space-y-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Músicas em Streaming</h2>
-            <Button 
-              onClick={() => {
-                setSearchType('stream');
-                document.querySelector('input')?.focus();
-              }}
-              variant="outline"
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Buscar mais músicas
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {streamTracks.map((track) => (
-              <Card key={track.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardContent className="p-0">
-                  <div className="flex items-center p-2">
-                    <div className="relative mr-3">
-                      <AlbumArt 
-                        src={track.albumArt} 
-                        alt={track.title} 
-                        size="sm"
-                        isPlaying={isPlaying && currentTrack?.id === track.id}
-                      />
-                      <div className="absolute top-0 right-0 bg-blue-500 rounded-full p-1">
-                        <Globe className="h-3 w-3 text-white" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{track.title}</h3>
-                      <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
-                      {track.album && (
-                        <p className="text-xs text-muted-foreground truncate">{track.album}</p>
-                      )}
-                    </div>
-                    <div className="flex space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => playTrack(track)}
-                        aria-label="Reproduzir"
-                        className="text-blue-500 hover:text-blue-700"
-                      >
-                        <Play className="h-5 w-5" />
-                      </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => downloadStreamTrack(track)}
-                        aria-label="Baixar"
-                        className="text-blue-500 hover:text-blue-700"
-                      >
-                        <Download className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          <div className="mt-8 text-left">
-            <h4 className="text-md font-medium mb-2">Serviços Recomendados</h4>
-            <ul className="space-y-2">
-              <li className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center mr-2">
-                  <Music className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium">Subsonic</p>
-                  <p className="text-xs text-muted-foreground">Streaming de música open source</p>
-                </div>
-              </li>
-              <li className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center mr-2">
-                  <Music className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium">Navidrome</p>
-                  <p className="text-xs text-muted-foreground">Servidor de música auto-hospedado</p>
-                </div>
-              </li>
-              <li className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center mr-2">
-                  <Music className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium">Airsonic</p>
-                  <p className="text-xs text-muted-foreground">Streaming de mídia gratuito</p>
-                </div>
-              </li>
-            </ul>
-          </div>
         </TabsContent>
         
         {/* Seção do YouTube Music */}

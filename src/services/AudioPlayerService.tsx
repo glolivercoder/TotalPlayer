@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { toast } from '@/components/ui/use-toast';
 import { youtubeAudioService } from './YouTubeAudioService';
 import { karaokeService } from './KaraokeService';
+import { isMobileDevice } from './FileService';
 
 export interface Track {
   id: string;
@@ -15,7 +16,7 @@ export interface Track {
   format?: string;
   isVideo?: boolean;
   isKaraoke?: boolean;
-  videoId?: string; // Adicionado para suportar vídeos do YouTube
+  videoId?: string; 
   fileHandle?: FileSystemFileHandle;
 }
 
@@ -52,6 +53,14 @@ interface AudioPlayerContextType {
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined);
 
+interface HowlExtended extends Howl {
+  _sounds?: Array<{
+    _node?: {
+      mediaElement?: HTMLMediaElement;
+    };
+  }>;
+}
+
 export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentTrack, setCurrentTrackState] = useState<Track | null>(null);
   const [playlist, setPlaylistState] = useState<Track[]>([]);
@@ -65,22 +74,19 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [tempo, setTempoState] = useState(100);
   const [voiceType, setVoiceTypeState] = useState('normal');
   
-  const howlRef = useRef<Howl | null>(null);
+  const howlRef = useRef<HowlExtended | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressTimerRef = useRef<number | null>(null);
   
-  // Inicializar o Howler
   useEffect(() => {
     Howler.autoUnlock = true;
     Howler.html5PoolSize = 10;
     
-    // Inicializar o serviço de karaoke
     karaokeService.initialize().catch(error => {
       console.error('Erro ao inicializar serviço de karaoke:', error);
     });
     
     return () => {
-      // Limpar recursos quando o componente for desmontado
       if (howlRef.current) {
         howlRef.current.unload();
       }
@@ -91,7 +97,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
   }, []);
   
-  // Update progress
   const updateProgress = useCallback(() => {
     try {
       if (howlRef.current && isPlaying) {
@@ -105,7 +110,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [isPlaying]);
   
-  // Set up progress timer
   useEffect(() => {
     if (isPlaying) {
       progressTimerRef.current = window.setInterval(updateProgress, 1000);
@@ -122,7 +126,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
   }, [isPlaying, updateProgress]);
   
-  // Play the next track in the playlist
   const next = useCallback(() => {
     try {
       console.log('Próxima faixa');
@@ -131,7 +134,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (currentIndex !== -1 && currentIndex < playlist.length - 1) {
           const nextTrack = playlist[currentIndex + 1];
           setCurrentTrackState(nextTrack);
-          // Criar nova instância de áudio para a próxima faixa
           if (!nextTrack.isVideo) {
             const howl = new Howl({
               src: [nextTrack.path],
@@ -157,7 +159,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
               onend: () => {
                 console.log('Áudio finalizado');
                 setIsPlaying(false);
-                // Não chamar next aqui para evitar recursão
               },
               onloaderror: (id, error) => {
                 console.error('Erro ao carregar áudio:', error);
@@ -176,14 +177,12 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 });
               }
             });
-            howlRef.current = howl;
+            howlRef.current = howl as HowlExtended;
             howl.play();
           }
         } else if (currentIndex === playlist.length - 1) {
-          // Loop back to the first track
           const firstTrack = playlist[0];
           setCurrentTrackState(firstTrack);
-          // Criar nova instância de áudio para a primeira faixa
           if (!firstTrack.isVideo) {
             const howl = new Howl({
               src: [firstTrack.path],
@@ -209,7 +208,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
               onend: () => {
                 console.log('Áudio finalizado');
                 setIsPlaying(false);
-                // Não chamar next aqui para evitar recursão
               },
               onloaderror: (id, error) => {
                 console.error('Erro ao carregar áudio:', error);
@@ -228,7 +226,7 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 });
               }
             });
-            howlRef.current = howl;
+            howlRef.current = howl as HowlExtended;
             howl.play();
           }
         }
@@ -238,176 +236,35 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [playlist, currentTrack, volume]);
   
-  // Handle setting the current track
   const setCurrentTrack = useCallback(async (track: Track) => {
+    console.log('Definindo faixa atual:', track);
     try {
-      console.log('Definindo faixa atual:', track);
-      
-      // Parar a reprodução atual
       if (howlRef.current) {
-        howlRef.current.stop();
+        console.log('Parando áudio anterior');
         howlRef.current.unload();
         howlRef.current = null;
       }
       
-      // Limpar o player de vídeo do YouTube se existir
-      const existingContainer = document.getElementById('youtube-player-container');
-      if (existingContainer) {
-        existingContainer.innerHTML = '';
-        existingContainer.style.display = 'none';
-      }
-      
-      // Limpar qualquer player de áudio do YouTube anterior
-      if (currentTrack?.videoId) {
-        youtubeAudioService.removePlayer(currentTrack.videoId);
-      }
-      
-      // Atualizar o estado da faixa atual
       setCurrentTrackState(track);
       
-      // Verificar se é um vídeo ou áudio do YouTube
       if (track.videoId) {
-        // Se for um vídeo, mostrar o player de vídeo
-        if (track.isVideo) {
-          console.log('Configurando reprodução de vídeo do YouTube:', track.videoId);
-          
-          // Verificar se o container do YouTube já existe
-          let youtubeContainer = document.getElementById('youtube-player-container');
-          if (!youtubeContainer) {
-            // Criar o container se não existir
-            youtubeContainer = document.createElement('div');
-            youtubeContainer.id = 'youtube-player-container';
-            youtubeContainer.style.position = 'fixed';
-            youtubeContainer.style.bottom = '80px';
-            youtubeContainer.style.right = '20px';
-            youtubeContainer.style.width = '320px';
-            youtubeContainer.style.height = '180px';
-            youtubeContainer.style.zIndex = '1000';
-            youtubeContainer.style.border = '1px solid #333';
-            youtubeContainer.style.borderRadius = '8px';
-            youtubeContainer.style.overflow = 'hidden';
-            youtubeContainer.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-            document.body.appendChild(youtubeContainer);
-          } else {
-            // Limpar o container existente e torná-lo visível
-            youtubeContainer.innerHTML = '';
-            youtubeContainer.style.display = 'block';
-          }
-          
-          // Carregar a API do YouTube se ainda não estiver carregada
-          if (!(window as any).YT || !(window as any).YT.Player) {
-            // Definir a função de callback antes de carregar o script
-            window.onYouTubeIframeAPIReady = () => {
-              console.log('API do YouTube carregada com sucesso');
-              // Aguardar um momento para garantir que a API esteja totalmente inicializada
-              setTimeout(() => {
-                createYouTubePlayer(track.videoId as string, youtubeContainer as HTMLElement);
-              }, 500);
-            };
-            
-            // Carregar o script da API
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            tag.onerror = () => {
-              console.error('Erro ao carregar a API do YouTube');
-              toast({
-                title: 'Erro ao carregar API do YouTube',
-                description: 'Não foi possível carregar a API do YouTube. Verifique sua conexão com a internet.',
-                variant: 'destructive',
-              });
-            };
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-          } else {
-            // A API já está carregada, criar o player diretamente
-            console.log('API do YouTube já carregada, criando player...');
-            setTimeout(() => {
-              createYouTubePlayer(track.videoId as string, youtubeContainer as HTMLElement);
-            }, 100);
-          }
-        } else {
-          // Se for música do YouTube, usar o YouTubeAudioService para extrair apenas o áudio
-          console.log('Configurando reprodução de áudio do YouTube:', track.videoId);
-          
-          // Esconder qualquer container de vídeo existente
-          const existingContainer = document.getElementById('youtube-player-container');
-          if (existingContainer) {
-            existingContainer.style.display = 'none';
-          }
-          
-          try {
-            // Inicializar o serviço de áudio do YouTube se necessário
-            if (!youtubeAudioService.isInitialized()) {
-              console.log('Inicializando serviço de áudio do YouTube...');
-              await youtubeAudioService.initialize();
-            }
-            
-            // Criar um player de áudio para o vídeo
-            console.log('Criando player de áudio para:', track.videoId);
-            const player = await youtubeAudioService.createAudioPlayer(track.videoId, {
-              onReady: () => {
-                console.log('Player de áudio do YouTube pronto');
-                setIsPlaying(true);
-                
-                toast({
-                  title: 'Reproduzindo música',
-                  description: `Reproduzindo "${track.title}" de ${track.artist}`,
-                  variant: 'default',
-                });
-              },
-              onPlay: () => {
-                console.log('Áudio do YouTube iniciado');
-                setIsPlaying(true);
-              },
-              onPause: () => {
-                console.log('Áudio do YouTube pausado');
-                setIsPlaying(false);
-              },
-              onEnd: () => {
-                console.log('Áudio do YouTube finalizado');
-                setIsPlaying(false);
-                // Quando o áudio terminar, chamar a função next
-                setTimeout(() => next(), 100);
-              },
-              onError: (error) => {
-                console.error('Erro no player de áudio do YouTube:', error);
-                toast({
-                  title: 'Erro ao reproduzir áudio',
-                  description: 'Não foi possível reproduzir o áudio deste vídeo do YouTube.',
-                  variant: 'destructive',
-                });
-              },
-              onDurationChange: (duration) => {
-                console.log('Duração do áudio do YouTube:', duration);
-                setDuration(duration);
-              }
-            });
-            
-            console.log('Player de áudio criado com sucesso:', player);
-          } catch (error) {
-            console.error('Erro ao configurar áudio do YouTube:', error);
-            toast({
-              title: 'Erro ao configurar áudio',
-              description: 'Não foi possível configurar o áudio deste vídeo do YouTube.',
-              variant: 'destructive',
-            });
-          }
-        }
+        console.log('Faixa do YouTube detectada, configurando player do YouTube');
+        youtubeAudioService.setVideoId(track.videoId, track.isVideo || false);
+        setDuration(0); 
       } else {
-        // Handle other audio playback
-        console.log('Configurando reprodução de áudio:', track.path);
-        
-        // Verificar se o caminho do arquivo é válido
         if (!track.path) {
           throw new Error('Caminho do arquivo de áudio inválido');
         }
         
-        // Criar uma nova instância de Howl para reproduzir o áudio
         try {
           console.log('Criando instância Howl para:', track.path);
+          
+          const isMobile = isMobileDevice();
+          console.log('DEBUG: Dispositivo móvel detectado:', isMobile);
+          
           const howl = new Howl({
             src: [track.path],
-            html5: true,
+            html5: true, 
             volume: volume,
             preload: true,
             format: ['mp3', 'wav', 'ogg'],
@@ -415,8 +272,14 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
               console.log('Áudio local carregado com sucesso, duração:', howl.duration());
               setDuration(howl.duration());
               
-              // Iniciar a reprodução automaticamente após o carregamento
-              howl.play();
+              if (isMobile) {
+                setTimeout(() => {
+                  console.log('DEBUG: Tentando reproduzir áudio em dispositivo móvel');
+                  howl.play();
+                }, 300);
+              } else {
+                howl.play();
+              }
               
               toast({
                 title: 'Reproduzindo música',
@@ -434,6 +297,18 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
             },
             onplayerror: (id, error) => {
               console.error('Erro ao reproduzir áudio local:', error);
+              
+              if (isMobile) {
+                console.log('DEBUG: Tentando reproduzir novamente em dispositivo móvel após erro');
+                setTimeout(() => {
+                  try {
+                    howl.play();
+                  } catch (retryError) {
+                    console.error('DEBUG: Erro ao tentar novamente:', retryError);
+                  }
+                }, 1000);
+              }
+              
               toast({
                 title: 'Erro ao reproduzir áudio',
                 description: 'Não foi possível reproduzir o arquivo de áudio. O formato pode não ser suportado.',
@@ -456,15 +331,12 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
             onend: () => {
               console.log('Áudio local finalizado');
               setIsPlaying(false);
-              // Quando o áudio terminar, chamar a função next
               setTimeout(() => next(), 100);
             }
           });
           
-          // Armazenar a referência do Howl
-          howlRef.current = howl;
+          howlRef.current = howl as HowlExtended;
           
-          // Verificar se o Howl foi criado corretamente
           if (!howlRef.current) {
             throw new Error('Falha ao criar player de áudio');
           }
@@ -489,7 +361,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [volume, vocalRemoval, next]);
   
-  // Função para reproduzir o áudio atual
   const play = useCallback(() => {
     console.log('Tentando reproduzir áudio, estado atual:', { isPlaying, currentTrack });
     
@@ -500,21 +371,17 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     
     try {
       if (currentTrack.videoId) {
-        // Se for um vídeo ou áudio do YouTube
         if (currentTrack.isVideo) {
           console.log('Reproduzindo vídeo do YouTube');
-          // O vídeo já é reproduzido automaticamente pelo player do YouTube
         } else {
           console.log('Reproduzindo áudio do YouTube');
           youtubeAudioService.playAudio(currentTrack.videoId);
         }
       } else if (howlRef.current) {
-        // Se for um áudio local
         console.log('Reproduzindo áudio local via Howl');
         howlRef.current.play();
       } else {
         console.error('Nenhum player de áudio disponível');
-        // Tentar recriar o player
         if (currentTrack) {
           console.log('Tentando recriar o player...');
           setCurrentTrack(currentTrack);
@@ -532,12 +399,10 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack, isPlaying, youtubeAudioService, setCurrentTrack]);
   
-  // Pause the current track
   const pause = useCallback(() => {
     try {
       console.log('Pause');
       if (currentTrack?.videoId && !currentTrack.isVideo) {
-        // Se for áudio do YouTube, usar o YouTubeAudioService
         youtubeAudioService.pauseAudio(currentTrack.videoId);
         setIsPlaying(false);
       } else if (howlRef.current) {
@@ -548,7 +413,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack]);
   
-  // Toggle play/pause
   const toggle = useCallback(() => {
     try {
       console.log('Toggle');
@@ -562,12 +426,10 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [isPlaying, pause, play]);
   
-  // Stop the current track
   const stop = useCallback(() => {
     try {
       console.log('Stop');
       if (currentTrack?.videoId && !currentTrack.isVideo) {
-        // Se for áudio do YouTube, usar o YouTubeAudioService
         youtubeAudioService.stopAudio(currentTrack.videoId);
         setIsPlaying(false);
         setProgress(0);
@@ -579,7 +441,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack]);
   
-  // Play the previous track in the playlist
   const previous = useCallback(() => {
     try {
       console.log('Faixa anterior');
@@ -589,7 +450,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
           setCurrentTrack(playlist[currentIndex - 1]);
           play();
         } else if (currentIndex === 0) {
-          // Loop back to the last track
           setCurrentTrack(playlist[playlist.length - 1]);
           play();
         }
@@ -599,32 +459,27 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [playlist, currentTrack, setCurrentTrack, play]);
   
-  // Set the playlist
   const setPlaylist = useCallback((tracks: Track[]) => {
     console.log('Definindo playlist com', tracks.length, 'faixas');
     setPlaylistState(tracks);
   }, []);
   
-  // Add a track to the playlist
   const addToPlaylist = useCallback((track: Track) => {
     console.log('Adicionando faixa à playlist:', track.title);
     setPlaylistState(prev => [...prev, track]);
   }, []);
   
-  // Remove a track from the playlist
   const removeFromPlaylist = useCallback((trackId: string) => {
     console.log('Removendo faixa da playlist:', trackId);
     setPlaylistState(prev => prev.filter(track => track.id !== trackId));
   }, []);
   
-  // Set the volume
   const setVolume = useCallback((newVolume: number) => {
     try {
       console.log('Set volume:', newVolume);
       setVolumeState(newVolume);
       
       if (currentTrack?.videoId && !currentTrack.isVideo) {
-        // Se for áudio do YouTube, usar o YouTubeAudioService
         youtubeAudioService.setVolume(currentTrack.videoId, newVolume);
       } else if (howlRef.current) {
         howlRef.current.volume(newVolume);
@@ -634,14 +489,12 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack]);
   
-  // Set muted state
   const setMuted = useCallback((muted: boolean) => {
     try {
       console.log('Set muted:', muted);
       setIsMuted(muted);
       
       if (currentTrack?.videoId && !currentTrack.isVideo) {
-        // Se for áudio do YouTube, usar o YouTubeAudioService
         youtubeAudioService.setMuted(currentTrack.videoId, muted);
       } else if (howlRef.current) {
         howlRef.current.mute(muted);
@@ -651,12 +504,10 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack]);
   
-  // Seek to a specific time
   const seekTo = useCallback((time: number) => {
     try {
       console.log('Seek to:', time);
       if (currentTrack?.videoId && !currentTrack.isVideo) {
-        // Se for áudio do YouTube, usar o YouTubeAudioService
         youtubeAudioService.seekTo(currentTrack.videoId, time);
         setProgress(time);
       } else if (howlRef.current) {
@@ -668,19 +519,15 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack]);
   
-  // Função para ativar/desativar a remoção de vocal
   const setVocalRemoval = useCallback(async (enabled: boolean) => {
     console.log('Definindo remoção de vocal:', enabled);
     setVocalRemovalState(enabled);
     
-    // Se tiver um áudio local sendo reproduzido, aplicar o efeito
     if (howlRef.current && currentTrack && !currentTrack.isVideo && !currentTrack.videoId) {
       try {
-        // Pausar a reprodução atual
         const wasPlaying = howlRef.current.playing();
         const currentPosition = howlRef.current.seek();
         
-        // Se o serviço de karaoke não estiver inicializado, inicializá-lo
         if (!karaokeService.isInitialized()) {
           toast({
             title: 'Inicializando processador de áudio',
@@ -689,13 +536,10 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
           await karaokeService.initialize();
         }
         
-        // Aplicar remoção de voz diretamente ao elemento de áudio atual
         if (enabled) {
-          // @ts-ignore - Howl tem propriedades internas que não estão no tipo
-          const audioElement = howlRef.current._sounds?.[0]?._node;
+          const audioElement = (howlRef.current as HowlExtended)._sounds?.[0]?._node?.mediaElement;
           
-          if (audioElement && audioElement.mediaElement) {
-            // Pausar temporariamente para aplicar o efeito
+          if (audioElement) {
             if (wasPlaying) {
               howlRef.current.pause();
             }
@@ -705,22 +549,17 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
               description: 'Processando áudio em tempo real...',
             });
             
-            // Obter o contexto de áudio
             const audioCtx = karaokeService.getAudioContext();
             if (!audioCtx) {
               throw new Error('Contexto de áudio não disponível');
             }
             
-            // Criar um MediaElementSource a partir do elemento de áudio
-            const source = audioCtx.createMediaElementSource(audioElement.mediaElement);
+            const source = audioCtx.createMediaElementSource(audioElement);
             
-            // Aplicar o processador de remoção de vocais
             const processedNode = karaokeService.applyVocalRemovalToNode(source);
             
-            // Conectar o nó processado à saída
             processedNode.connect(audioCtx.destination);
             
-            // Retomar a reprodução se estava tocando
             if (wasPlaying) {
               howlRef.current.play();
             }
@@ -730,15 +569,11 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
               description: 'O efeito de remoção de vocal foi aplicado com sucesso.',
             });
           } else {
-            // Se não conseguir acessar o elemento de áudio, recarregar a faixa
             if (currentTrack) {
-              // Descarregar o Howl atual
               howlRef.current.unload();
               
-              // Recarregar a faixa
               setCurrentTrack(currentTrack);
               
-              // Definir a posição e o estado de reprodução
               setTimeout(() => {
                 if (howlRef.current) {
                   howlRef.current.seek(currentPosition);
@@ -755,15 +590,11 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
             }
           }
         } else {
-          // Desativar o efeito recarregando o áudio
           if (currentTrack) {
-            // Descarregar o Howl atual
             howlRef.current.unload();
             
-            // Recarregar a faixa
             setCurrentTrack(currentTrack);
             
-            // Definir a posição e o estado de reprodução
             setTimeout(() => {
               if (howlRef.current) {
                 howlRef.current.seek(currentPosition);
@@ -801,92 +632,121 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack, setCurrentTrack]);
   
-  // Função para ajustar o pitch (tom)
   const setPitchShift = useCallback((semitones: number) => {
-    console.log('Definindo pitch shift:', semitones);
+    console.log('DEBUG: setPitchShift chamado com semitones =', semitones);
     setPitchShiftState(semitones);
     
-    // Se tiver um áudio local sendo reproduzido, aplicar o efeito
     if (howlRef.current && currentTrack && !currentTrack.isVideo && !currentTrack.videoId) {
+      console.log('DEBUG: Aplicando pitch shift em áudio local');
       try {
-        // Pausar a reprodução atual
         const wasPlaying = howlRef.current.playing();
-        if (wasPlaying) {
-          howlRef.current.pause();
-        }
+        console.log('DEBUG: Estado de reprodução antes do pitch shift:', { wasPlaying });
         
-        // Obter o buffer de áudio atual
-        // @ts-ignore - Howl tem propriedades internas que não estão no tipo
-        const audioElement = howlRef.current._sounds?.[0]?._node;
+        // Obter o elemento de áudio da Howl
+        const mediaElement = (howlRef.current as HowlExtended)._sounds?.[0]?._node?.mediaElement;
+        console.log('DEBUG: Elemento de áudio obtido:', mediaElement ? 'Sim' : 'Não');
         
-        // Se o serviço de karaoke não estiver inicializado, inicializá-lo
-        if (!karaokeService.isInitialized()) {
-          karaokeService.initialize();
-        }
-        
-        // Aplicar os efeitos de pitch shift
-        toast({
-          title: 'Processando áudio',
-          description: 'Aplicando ajuste de tom...',
-        });
-        
-        // Aplicar pitch shift em tempo real
-        if (audioElement && audioElement.mediaElement) {
-          const mediaElementSource = karaokeService.getAudioContext()?.createMediaElementSource(audioElement.mediaElement);
-          if (mediaElementSource) {
-            const processedNode = karaokeService.applyPitchShiftToNode(mediaElementSource, semitones);
-            processedNode.connect(karaokeService.getAudioContext()!.destination);
-            
-            toast({
-              title: 'Ajuste de tom aplicado',
-              description: `O tom foi ajustado em ${semitones > 0 ? '+' : ''}${semitones} semitons.`,
-            });
-            
-            // Retomar a reprodução se estava tocando
-            if (wasPlaying) {
-              howlRef.current.play();
-            }
-          }
-        } else {
+        if (!mediaElement) {
+          console.error('DEBUG: Elemento de áudio não disponível para pitch shift');
           toast({
             title: 'Não foi possível aplicar o efeito',
             description: 'O áudio atual não suporta ajuste de tom em tempo real.',
             variant: 'destructive',
           });
+          return;
+        }
+        
+        // Verificar se o AudioContext está em estado suspended e reativá-lo se necessário
+        const audioContext = karaokeService.getAudioContext();
+        if (audioContext && audioContext.state === 'suspended') {
+          console.log('DEBUG: Reativando AudioContext que estava suspenso');
+          audioContext.resume().then(() => {
+            console.log('DEBUG: AudioContext reativado com sucesso');
+          }).catch(err => {
+            console.error('DEBUG: Erro ao reativar AudioContext:', err);
+          });
+        }
+        
+        // Aplicar o pitch shift usando o KaraokeService
+        // Converter explicitamente para HTMLMediaElement para compatibilidade
+        if (mediaElement instanceof HTMLMediaElement) {
+          console.log('DEBUG: Aplicando pitch shift em HTMLMediaElement');
+          karaokeService.applySoundTouchPitchShift(mediaElement, semitones);
+          
+          // Se estava tocando e parou, retomar a reprodução
+          if (wasPlaying && howlRef.current && !howlRef.current.playing()) {
+            console.log('DEBUG: Retomando reprodução após pitch shift');
+            howlRef.current.play();
+          }
+          
+          toast({
+            title: 'Ajuste de tom aplicado',
+            description: `O tom foi ajustado em ${semitones > 0 ? '+' : ''}${semitones} semitons.`,
+          });
+        } else {
+          console.error('DEBUG: Elemento de áudio não é do tipo HTMLMediaElement');
+          toast({
+            title: 'Erro ao processar áudio',
+            description: 'O tipo de elemento de áudio não é suportado para ajuste de tom.',
+            variant: 'destructive',
+          });
         }
       } catch (error) {
-        console.error('Erro ao aplicar pitch shift:', error);
+        console.error('DEBUG: Erro ao aplicar pitch shift:', error);
         toast({
           title: 'Erro ao processar áudio',
           description: 'Não foi possível aplicar o ajuste de tom.',
           variant: 'destructive',
         });
       }
-    } else if (currentTrack?.videoId) {
-      toast({
-        title: 'Recurso não disponível',
-        description: 'O ajuste de tom não está disponível para vídeos do YouTube.',
-        variant: 'destructive',
-      });
+    } else if (currentTrack?.videoId && youtubeAudioService.isInitialized()) {
+      // Para vídeos do YouTube, ajustar a velocidade de reprodução
+      try {
+        console.log('DEBUG: Tentando aplicar pitch shift em vídeo do YouTube');
+        toast({
+          title: 'Recurso limitado',
+          description: 'O ajuste de tom para vídeos do YouTube é limitado e pode afetar a velocidade de reprodução.',
+        });
+      } catch (error) {
+        console.error('DEBUG: Erro ao ajustar pitch para YouTube:', error);
+        toast({
+          title: 'Erro ao processar áudio',
+          description: 'Não foi possível aplicar o ajuste de tom ao vídeo do YouTube.',
+          variant: 'destructive',
+        });
+      }
     } else {
+      console.log('DEBUG: Não foi possível aplicar pitch shift - nenhum áudio reproduzindo');
       toast({
         title: 'Nenhum áudio reproduzindo',
         description: 'Selecione um arquivo de áudio para aplicar o ajuste de tom.',
       });
     }
-  }, [currentTrack]);
+  }, [currentTrack, setPitchShiftState]);
   
-  // Função para ajustar o tempo (velocidade)
+  const setVoiceType = useCallback((type: string) => {
+    console.log('Definindo tipo de voz:', type);
+    setVoiceTypeState(type);
+    
+    const voicePresets: Record<string, number> = {
+      'soprano': 4,
+      'mezzo': 2,
+      'tenor': -4,
+      'baritone': -6,
+      'normal': 0
+    };
+    
+    const newPitchShift = voicePresets[type] || 0;
+    setPitchShift(newPitchShift);
+    
+  }, [setPitchShift]);
+  
   const setTempo = useCallback((percentage: number) => {
     console.log('Definindo tempo:', percentage);
     setTempoState(percentage);
     
-    // Se tiver um áudio local sendo reproduzido, aplicar o efeito
     if (howlRef.current && currentTrack && !currentTrack.isVideo && !currentTrack.videoId) {
       try {
-        // Ajustar a velocidade de reprodução do Howler
-        // Nota: Isso afeta tanto o tempo quanto o pitch, não é ideal
-        // mas é a única opção disponível com o Howler
         howlRef.current.rate(percentage / 100);
         
         toast({
@@ -915,61 +775,19 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [currentTrack]);
   
-  // Função para definir o tipo de voz
-  const setVoiceType = useCallback((type: string) => {
-    console.log('Definindo tipo de voz:', type);
-    setVoiceTypeState(type);
-    
-    // Aplicar configurações predefinidas de pitch com base no tipo de voz
-    let pitchValue = 0;
-    switch (type) {
-      case 'male':
-        pitchValue = -2; // Abaixar 2 semitons para voz masculina
-        break;
-      case 'female':
-        pitchValue = 2; // Aumentar 2 semitons para voz feminina
-        break;
-      case 'tenor':
-        pitchValue = -4; // Abaixar 4 semitons para tenor
-        break;
-      case 'baritone':
-        pitchValue = -6; // Abaixar 6 semitons para barítono
-        break;
-      case 'soprano':
-        pitchValue = 4; // Aumentar 4 semitons para soprano
-        break;
-      case 'normal':
-      default:
-        pitchValue = 0; // Sem alteração para voz normal
-        break;
-    }
-    
-    // Aplicar o pitch shift com o valor calculado
-    setPitchShift(pitchValue);
-    
-    toast({
-      title: 'Tipo de voz alterado',
-      description: `O tipo de voz foi alterado para ${type}.`,
-    });
-  }, [setPitchShift]);
-  
-  // Função para criar o player do YouTube
   const createYouTubePlayer = useCallback((videoId: string, container: HTMLElement) => {
     try {
       console.log('Criando player do YouTube para o vídeo:', videoId);
       
-      // Verificar se a API do YouTube está disponível
       if (!(window as any).YT || !(window as any).YT.Player) {
         throw new Error('API do YouTube não está disponível');
       }
       
-      // Criar um elemento DIV dentro do container para o iframe
       container.innerHTML = '';
       const playerDiv = document.createElement('div');
       playerDiv.id = 'youtube-player-iframe';
       container.appendChild(playerDiv);
       
-      // Criar o player
       new (window as any).YT.Player(playerDiv.id, {
         videoId: videoId,
         playerVars: {
@@ -986,7 +804,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
             event.target.playVideo();
             setIsPlaying(true);
             
-            // Obter a duração do vídeo
             const duration = event.target.getDuration();
             console.log('Duração do vídeo do YouTube:', duration);
             setDuration(duration);
@@ -999,7 +816,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
               setIsPlaying(false);
             } else if (event.data === (window as any).YT.PlayerState.ENDED) {
               setIsPlaying(false);
-              // Quando o vídeo terminar, chamar a função next
               setTimeout(() => next(), 100);
             }
           },
@@ -1007,7 +823,6 @@ export const AudioPlayerProvider: React.FC<{ children: React.ReactNode }> = ({ c
             console.error('Erro no player do YouTube:', event.data);
             let errorMessage = 'Ocorreu um erro ao reproduzir o vídeo do YouTube.';
             
-            // Traduzir códigos de erro do YouTube
             switch(event.data) {
               case 2:
                 errorMessage = 'Parâmetro inválido no ID do vídeo.';

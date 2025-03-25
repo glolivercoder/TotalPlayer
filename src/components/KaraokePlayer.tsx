@@ -21,6 +21,7 @@ const KaraokePlayer: React.FC<KaraokePlayerProps> = ({ type, filePath, onScoreUp
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [audioContextStarted, setAudioContextStarted] = useState(false);
+  const [librariesLoaded, setLibrariesLoaded] = useState(false);
 
   // Referências para os players
   const midiPlayerRef = useRef<any>(null);
@@ -54,7 +55,130 @@ const KaraokePlayer: React.FC<KaraokePlayerProps> = ({ type, filePath, onScoreUp
     }
   };
   
-  // Função para inicializar o player apropriado - movida para fora do useEffect
+  // Inicialização dos players
+  useEffect(() => {
+    let isMounted = true;
+    let scoreInterval: NodeJS.Timeout | null = null;
+
+    addDebugInfo(`Iniciando carregamento para tipo: ${type}, arquivo: ${filePath}`);
+
+    // Função para carregar as bibliotecas dinamicamente
+    const loadLibraries = async () => {
+      try {
+        // Carregar bibliotecas dinamicamente
+        if (typeof window !== 'undefined') {
+          addDebugInfo('Ambiente de navegador detectado, iniciando carregamento de bibliotecas');
+
+          try {
+            // Importar JZZ
+            addDebugInfo('Tentando importar JZZ');
+            const jzzModule = await import('jzz');
+            const JZZ = jzzModule.default || jzzModule;
+            jzzRef.current = JZZ;
+            addDebugInfo('JZZ importado com sucesso');
+
+            // Importar e inicializar os plugins
+            if (type === 'midi') {
+              addDebugInfo('Tentando importar jzz-midi-smf');
+              await import('jzz-midi-smf').then(module => {
+                const SMF = module.default || module;
+                addDebugInfo('jzz-midi-smf importado, inicializando...');
+                SMF(JZZ);
+                addDebugInfo('jzz-midi-smf inicializado');
+              });
+
+              addDebugInfo('Tentando importar jzz-gui-karaoke');
+              await import('jzz-gui-karaoke').then(module => {
+                const Karaoke = module.default || module;
+                addDebugInfo('jzz-gui-karaoke importado, inicializando...');
+                Karaoke(JZZ);
+                addDebugInfo('jzz-gui-karaoke inicializado');
+              });
+            } else if (type === 'cdg') {
+              // Importar JSZipUtils primeiro
+              addDebugInfo('Tentando importar jszip-utils');
+              await import('jszip-utils').then(module => {
+                // Adicionar JSZipUtils ao objeto window para que o CDGPlayer possa acessá-lo
+                (window as any).JSZipUtils = module.default || module;
+                addDebugInfo('jszip-utils importado com sucesso');
+              });
+              
+              addDebugInfo('Tentando importar cdgplayer');
+              const cdgModule = await import('cdgplayer');
+              cdgPlayerClassRef.current = cdgModule.CDGPlayer;
+              cdgControlsClassRef.current = cdgModule.CDGControls;
+              addDebugInfo('cdgplayer importado com sucesso');
+            }
+
+            if (isMounted) {
+              setLibrariesLoaded(true);
+              addDebugInfo('Todas as bibliotecas carregadas com sucesso');
+            }
+          } catch (error: any) {
+            console.error('Erro ao carregar bibliotecas:', error);
+            addDebugInfo(`Erro ao carregar bibliotecas: ${error.message}`);
+            if (isMounted) {
+              setError(`Erro ao carregar bibliotecas: ${error.message}`);
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('Erro ao carregar bibliotecas:', error);
+        addDebugInfo(`Erro ao carregar bibliotecas: ${error.message}`);
+        if (isMounted) {
+          setError(`Erro ao carregar bibliotecas: ${error.message}`);
+        }
+      }
+    };
+
+    // Carregar bibliotecas
+    loadLibraries();
+
+    return () => {
+      isMounted = false;
+      if (scoreInterval) {
+        clearInterval(scoreInterval);
+      }
+    };
+  }, [type]);
+
+  // Efeito para inicializar o player quando as bibliotecas estiverem carregadas e o filePath for definido
+  useEffect(() => {
+    if (!filePath || !librariesLoaded) {
+      addDebugInfo(`Aguardando filePath e bibliotecas: filePath=${!!filePath}, librariesLoaded=${librariesLoaded}`);
+      return;
+    }
+
+    addDebugInfo(`Bibliotecas carregadas e filePath definido, inicializando player: ${type}`);
+    initializePlayer();
+    setIsLoaded(true);
+
+    return () => {
+      // Limpar recursos ao desmontar
+      if (midiPlayerRef.current) {
+        try {
+          if (midiPlayerRef.current.player) {
+            midiPlayerRef.current.player.stop();
+          }
+          if (midiPlayerRef.current.midiout) {
+            midiPlayerRef.current.midiout.close();
+          }
+        } catch (err: any) {
+          addDebugInfo(`Erro ao limpar recursos MIDI: ${err.message}`);
+        }
+      }
+
+      if (cdgPlayerRef.current) {
+        try {
+          cdgPlayerRef.current.stop();
+        } catch (err: any) {
+          addDebugInfo(`Erro ao limpar recursos CDG: ${err.message}`);
+        }
+      }
+    };
+  }, [filePath, librariesLoaded, type]);
+
+  // Função para inicializar o player apropriado
   const initializePlayer = () => {
     if (!containerRef.current) {
       addDebugInfo('Erro: containerRef não encontrado');
@@ -158,6 +282,7 @@ const KaraokePlayer: React.FC<KaraokePlayerProps> = ({ type, filePath, onScoreUp
 
               // Iniciar simulação de pontuação
               startScoreSimulation();
+              setIsLoaded(true);
             } catch (err: any) {
               console.error('Erro ao processar arquivo MIDI:', err);
               addDebugInfo(`Erro ao processar arquivo MIDI: ${err.message}`);
@@ -216,11 +341,15 @@ const KaraokePlayer: React.FC<KaraokePlayerProps> = ({ type, filePath, onScoreUp
 
         // Iniciar simulação de pontuação
         startScoreSimulation();
+        setIsLoaded(true);
       } catch (error: any) {
         console.error('Erro ao inicializar player CDG:', error);
         addDebugInfo(`Erro ao inicializar player CDG: ${error.message}`);
         toast.error(`Erro ao inicializar player CDG: ${error.message}`);
       }
+    } else {
+      addDebugInfo(`ERRO: Não foi possível inicializar o player. Tipo: ${type}, Bibliotecas carregadas: ${librariesLoaded}`);
+      setError(`Não foi possível inicializar o player. Verifique se as bibliotecas foram carregadas corretamente.`);
     }
   };
 
@@ -247,131 +376,6 @@ const KaraokePlayer: React.FC<KaraokePlayerProps> = ({ type, filePath, onScoreUp
     // Retornar função para limpar o intervalo
     return () => clearInterval(scoreInterval);
   };
-
-  // Inicialização dos players
-  useEffect(() => {
-    let isMounted = true;
-    let scoreInterval: NodeJS.Timeout | null = null;
-
-    addDebugInfo(`Iniciando carregamento para tipo: ${type}, arquivo: ${filePath}`);
-
-    // Função para carregar as bibliotecas dinamicamente
-    const loadLibraries = async () => {
-      try {
-        // Carregar bibliotecas dinamicamente
-        if (typeof window !== 'undefined') {
-          addDebugInfo('Ambiente de navegador detectado, iniciando carregamento de bibliotecas');
-
-          try {
-            // Importar JZZ
-            addDebugInfo('Tentando importar JZZ');
-            const jzzModule = await import('jzz');
-            const JZZ = jzzModule.default || jzzModule;
-            jzzRef.current = JZZ;
-            addDebugInfo('JZZ importado com sucesso');
-
-            // Importar e inicializar os plugins
-            if (type === 'midi') {
-              addDebugInfo('Tentando importar jzz-midi-smf');
-              await import('jzz-midi-smf').then(module => {
-                const SMF = module.default || module;
-                addDebugInfo('jzz-midi-smf importado, inicializando...');
-                SMF(JZZ);
-                addDebugInfo('jzz-midi-smf inicializado');
-              });
-
-              addDebugInfo('Tentando importar jzz-gui-karaoke');
-              await import('jzz-gui-karaoke').then(module => {
-                const Karaoke = module.default || module;
-                addDebugInfo('jzz-gui-karaoke importado, inicializando...');
-                Karaoke(JZZ);
-                addDebugInfo('jzz-gui-karaoke inicializado');
-              });
-            } else if (type === 'cdg') {
-              // Importar JSZipUtils primeiro
-              addDebugInfo('Tentando importar jszip-utils');
-              await import('jszip-utils').then(module => {
-                // Adicionar JSZipUtils ao objeto window para que o CDGPlayer possa acessá-lo
-                (window as any).JSZipUtils = module.default || module;
-                addDebugInfo('jszip-utils importado com sucesso');
-              });
-              
-              addDebugInfo('Tentando importar cdgplayer');
-              const cdgModule = await import('cdgplayer');
-              cdgPlayerClassRef.current = cdgModule.CDGPlayer;
-              cdgControlsClassRef.current = cdgModule.CDGControls;
-              addDebugInfo('cdgplayer importado com sucesso');
-            }
-
-            if (isMounted) {
-              setIsLoaded(true);
-              addDebugInfo('Bibliotecas carregadas, iniciando player');
-              // Não inicializamos o player aqui, esperamos a interação do usuário
-            }
-          } catch (err: any) {
-            console.error('Erro ao carregar bibliotecas:', err);
-            addDebugInfo(`Erro ao carregar bibliotecas: ${err.message}`);
-            if (isMounted) {
-              setError(`Erro ao carregar bibliotecas: ${err.message}`);
-              toast.error(`Erro ao carregar bibliotecas: ${err.message}`);
-            }
-          }
-        }
-      } catch (err: any) {
-        console.error('Erro ao carregar bibliotecas:', err);
-        addDebugInfo(`Erro geral ao carregar bibliotecas: ${err.message}`);
-        if (isMounted) {
-          setError(`Erro ao carregar bibliotecas: ${err.message}`);
-          toast.error(`Erro ao carregar bibliotecas: ${err.message}`);
-        }
-      }
-    };
-
-    // Carregar bibliotecas
-    loadLibraries();
-
-    // Cleanup
-    return () => {
-      addDebugInfo('Desmontando componente, realizando limpeza');
-      isMounted = false;
-
-      if (scoreInterval) {
-        clearInterval(scoreInterval);
-      }
-
-      if (midiPlayerRef.current) {
-        if (midiPlayerRef.current.player) {
-          addDebugInfo('Parando player MIDI');
-          try {
-            midiPlayerRef.current.player.stop();
-          } catch (err) {
-            addDebugInfo('Erro ao parar player MIDI');
-          }
-        }
-        if (midiPlayerRef.current.midiout) {
-          addDebugInfo('Fechando saída MIDI');
-          try {
-            midiPlayerRef.current.midiout.close();
-          } catch (err) {
-            addDebugInfo('Erro ao fechar saída MIDI');
-          }
-        }
-      }
-
-      if (cdgPlayerRef.current) {
-        addDebugInfo('Limpando player CDG');
-        // CDGPlayer não tem método de cleanup explícito
-      }
-      
-      // Limpar referências
-      midiPlayerRef.current = null;
-      cdgPlayerRef.current = null;
-      cdgControlsRef.current = null;
-      jzzRef.current = null;
-      cdgPlayerClassRef.current = null;
-      cdgControlsClassRef.current = null;
-    };
-  }, [type, filePath]);
 
   // Controle de reprodução
   const togglePlayPause = () => {
